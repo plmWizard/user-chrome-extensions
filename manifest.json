@@ -1,0 +1,72 @@
+{
+  "manifest_version": 3,
+  "name": "coolOrange PLM extension",
+  "version": "1.1",
+  "description": "Enhances the user interface of Autodesk Fusion Manage to improve usability and productivity through custom UI modifications and extended functionality.",
+  "permissions": ["scripting", "activeTab", "tabs", "storage"],
+  "host_permissions": ["<all_urls>", "file:///*"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["actionButtons.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.autodeskplm360.net/script.form*"],
+      "js": ["actionButtonInfo.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.autodeskplm360.net/plm/workspaces/*"],
+      "js": ["localLinks.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.autodeskplm360.net/plm/workspaces/*"],
+      "js": ["standartActionsButtons.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.autodeskplm360.net/admin*"],
+      "js": ["resendEmail.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.autodeskplm360.net/*"],
+      "js": ["applyTheme.js"],
+      "css": ["darkTheme.css"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://*.autodeskplm360.net/*"],
+      "js": ["logos.js"],
+      "run_at": "document_idle"
+    }
+  ],
+    "action": {
+      "default_icon":{
+        "16": "icons/coolOrangeIcon16.png",
+        "32": "icons/coolOrangeIcon32.png"
+      } 
+  },
+  "icons": {
+    "16": "icons/coolOrangeIcon16.png",
+    "48": "icons/coolOrangeIcon48.png",
+    "128": "icons/coolOrangeIcon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/coolOrangeIcon16.png"],
+      "matches": ["<all_urls>"]
+    },
+    {
+      "resources": ["injectedScriptForNotifications.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "options_page": "options.html"
+}

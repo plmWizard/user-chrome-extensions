@@ -1,0 +1,182 @@
+:root {
+    color-scheme: dark;
+}
+
+body.theme-dark {
+    background-color: #252A3F;
+    color: #E5F4FF;
+    min-height: 100vh;
+    padding: 24px 0;
+}
+
+body.theme-dark .container {
+    background: rgba(47, 51, 59, 0.9);
+    border-radius: 16px;
+    border: 1px solid rgba(2, 167, 223, 0.35);
+    box-shadow: 0 24px 60px rgba(4, 11, 27, 0.65);
+}
+
+body.theme-dark header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+}
+
+.logo-group {
+    display: flex;
+    align-items: center;
+}
+
+.logo-link {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.logo-group img {
+    height: 32px;
+    width: 32px;
+    pointer-events: auto;
+}
+
+.logo-gray {
+    color: #656565;
+    font-family: Arial, sans-serif;
+    font-size: 32px;
+}
+
+.logo-orange {
+    color: #FF9900;
+    font-family: Arial, sans-serif;
+    font-size: 32px;
+}
+
+.options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0px;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+}
+
+body.theme-dark h1,
+body.theme-dark label,
+body.theme-dark .image-description,
+body.theme-dark p {
+    color: #E5F4FF;
+}
+
+body.theme-dark a {
+    color: #55BCEB;
+}
+
+body.theme-dark a:hover {
+    color: #02A7DF;
+}
+
+h1 {
+    font-size: 24px;
+    margin: 0;
+}
+
+.image-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 40px;
+    margin-bottom: 30px;
+}
+
+.image-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.image-column img {
+    width: 400px;
+    object-fit: contain;
+}
+
+.image-section {
+    text-align: left;
+    margin-top: 20px;
+}
+
+.image-description {
+    font-size: 14px;
+    margin-bottom: 20px;
+    color: #444;
+}
+
+#textLinkSubOptions {
+  margin-left: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+body.theme-dark .form-check {
+    background: rgba(58, 67, 97, 0.55);
+    border: 1px solid rgba(87, 115, 144, 0.45);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+body.theme-dark .form-check:hover {
+    background: rgba(79, 85, 99, 0.85);
+    border-color: rgba(2, 167, 223, 0.65);
+}
+
+body.theme-dark .form-check-input {
+    background-color: #252A3F;
+    border-color: rgba(2, 167, 223, 0.75);
+    cursor: pointer;
+}
+
+body.theme-dark .form-check-input:checked {
+    background-color: #02A7DF;
+    border-color: #02A7DF;
+    box-shadow: 0 0 0 4px rgba(2, 167, 223, 0.25);
+}
+
+body.theme-dark .form-check-input:focus {
+    box-shadow: 0 0 0 4px rgba(5, 167, 220, 0.35);
+}
+
+body.theme-dark #excludeList {
+    background-color: #1D2234;
+    border: 1px solid rgba(2, 167, 223, 0.65);
+    border-radius: 8px;
+    color: #E5F4FF;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    width: 100%;
+}
+
+body.theme-dark #excludeList::placeholder {
+    color: rgba(229, 244, 255, 0.6);
+}
+
+body.theme-dark hr {
+    border-top: 1px solid rgba(229, 244, 255, 0.2);
+}
+
+body.theme-dark .logo-group img {
+    filter: drop-shadow(0 4px 12px rgba(5, 167, 220, 0.25));
+}
+
+body.theme-dark img {
+    border-radius: 12px;
+    box-shadow: 0 16px 45px rgba(4, 11, 27, 0.45);
+}
