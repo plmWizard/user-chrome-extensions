@@ -49,6 +49,8 @@ Runs an additional action **after saving** (after grid `addRow` or `edit`).
 
 > **Note:** `onEdit` currently only works for **grid tabs**, and it triggers **after save**.
 
+<img width="875" height="139" alt="bilde" src="https://github.com/user-attachments/assets/e023881c-37c3-4dc4-a616-65d1a20d3562" />
+
 ---
 
 ### 2) Change workspace header colors
@@ -67,3 +69,4 @@ To set a custom header color for a workspace:
 ```txt
 {color: #06402B}
 ```
+<img width="631" height="134" alt="bilde" src="https://github.com/user-attachments/assets/3726b3e6-ac84-44df-b4b0-da5a1a61ebc5" />
