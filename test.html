@@ -1,0 +1,184 @@
+<tabs-menu
+  ng-if="!itemViewerCtrl.displayAddItem()"
+  workspace-id="itemViewerCtrl.workspaceId"
+  allow-tab-links="true"
+  item-id="itemViewerCtrl.itemId"
+  allow-auto-refresh="true"
+  ><md-toolbar
+    id="itemviewer-item-tabs-wrapper"
+    class="_md _md-toolbar-transitions"
+    ><ul
+      id="item-tabs"
+      df-tab-menu=""
+      menu-control="details"
+      role="tablist"
+      class="df-tab-menu"
+    >
+      <div id="item-tabs-tour-anchor"></div>
+      <span class="item-tabs-bar"
+        ><!---->
+        <li
+          ng-repeat="tab in tabsCtrl.tabList"
+          data-menu-item="details"
+          ng-click="tabsCtrl.updateTab(tab.active);"
+          role="presentation"
+          tabindex="0"
+          aria-hidden="false"
+          class="df-tab-menu-active"
+        >
+          <div
+            id="details-coach-mark-anchor"
+            class="tab-coach-mark-anchor"
+            aria-selected="true"
+            role="tab"
+          ></div>
+          <a
+            data-ng-href="/plm/workspaces/1959/items/itemDetails?view=full&amp;tab=details&amp;mode=view&amp;itemId=urn%60adsk%2Cplm%60tenant%2Cworkspace%2Citem%60TRAININGGUNDERSEN%2C1959%2C22455"
+            ng-class="{'disabled': !$first &amp;&amp; !allowTabLinks}"
+            title="Item Details"
+            aria-selected="true"
+            role="tab"
+            href="/plm/workspaces/1959/items/itemDetails?view=full&amp;tab=details&amp;mode=view&amp;itemId=urn%60adsk%2Cplm%60tenant%2Cworkspace%2Citem%60TRAININGGUNDERSEN%2C1959%2C22455"
+            >Item Details
+          </a>
+        </li>
+        <!---->
+        <li
+          ng-repeat="tab in tabsCtrl.tabList"
+          data-menu-item="workflow-map"
+          ng-click="tabsCtrl.updateTab(tab.active);"
+          role="presentation"
+          tabindex="0"
+          aria-hidden="false"
+        >
+          <div
+            id="workflow-map-coach-mark-anchor"
+            class="tab-coach-mark-anchor"
+            aria-selected="false"
+            role="tab"
+          ></div>
+          <a
+            data-ng-href="/plm/workspaces/1959/items/workflowMap?view=full&amp;tab=workflow-map&amp;mode=view&amp;itemId=urn%60adsk%2Cplm%60tenant%2Cworkspace%2Citem%60TRAININGGUNDERSEN%2C1959%2C22455"
+            ng-class="{'disabled': !$first &amp;&amp; !allowTabLinks}"
+            title="Workflow Actions"
+            aria-selected="false"
+            role="tab"
+            href="/plm/workspaces/1959/items/workflowMap?view=full&amp;tab=workflow-map&amp;mode=view&amp;itemId=urn%60adsk%2Cplm%60tenant%2Cworkspace%2Citem%60TRAININGGUNDERSEN%2C1959%2C22455"
+            >Workflow Actions
+          </a>
+        </li>
+        <!---->
+        <li
+          ng-repeat="tab in tabsCtrl.tabList"
+          data-menu-item="change-log"
+          ng-click="tabsCtrl.updateTab(tab.active);"
+          role="presentation"
+          tabindex="0"
+          class="ng-hide"
+          aria-hidden="true"
+        >
+          <div
+            id="change-log-coach-mark-anchor"
+            class="tab-coach-mark-anchor"
+            aria-selected="false"
+            role="tab"
+          ></div>
+          <a
+            data-ng-href="/plm/workspaces/1959/items/changeLog?view=full&amp;tab=change-log&amp;mode=view&amp;itemId=urn%60adsk%2Cplm%60tenant%2Cworkspace%2Citem%60TRAININGGUNDERSEN%2C1959%2C22455"
+            ng-class="{'disabled': !$first &amp;&amp; !allowTabLinks}"
+            title="Change Log"
+            aria-selected="false"
+            role="tab"
+            href="/plm/workspaces/1959/items/changeLog?view=full&amp;tab=change-log&amp;mode=view&amp;itemId=urn%60adsk%2Cplm%60tenant%2Cworkspace%2Citem%60TRAININGGUNDERSEN%2C1959%2C22455"
+            >Change Log (4)</a
+          >
+        </li>
+        <!----></span
+      ><span class="item-tabs-more"
+        ><li
+          data-more-menu-item=""
+          class="item-more"
+          role="presentation"
+          aria-hidden="false"
+        >
+          <span
+            ng-class="{'disabled': !allowTabLinks}"
+            df-dropdown-toggle=""
+            aria-haspopup="true"
+            aria-expanded="false"
+            class="df-dropdown-toggle"
+            >More +</span
+          >
+          <ul role="menu" aria-hidden="true" class="df-tab-menu-dropdown">
+            <!---->
+            <li
+              ng-repeat="tab in tabsCtrl.tabList"
+              data-menu-item="details"
+              ng-click="tabsCtrl.updateTab(tab.active);"
+              role="menuitem"
+              tabindex="0"
+              class="ng-hide"
+              aria-hidden="true"
+            >
+              <div
+                id="details-coach-mark-anchor"
+                class="tab-coach-mark-anchor"
+              ></div>
+              <a
+                data-ng-href="/plm/workspaces/1959/items/itemDetails?view=full&amp;tab=details&amp;mode=view&amp;itemId=urn%60adsk%2Cplm%60tenant%2Cworkspace%2Citem%60TRAININGGUNDERSEN%2C1959%2C22455"
+                ng-class="{'disabled': !$first &amp;&amp; !allowTabLinks}"
+                title="Item Details"
+                href="/plm/workspaces/1959/items/itemDetails?view=full&amp;tab=details&amp;mode=view&amp;itemId=urn%60adsk%2Cplm%60tenant%2Cworkspace%2Citem%60TRAININGGUNDERSEN%2C1959%2C22455"
+                >Item Details
+              </a>
+            </li>
+            <!---->
+            <li
+              ng-repeat="tab in tabsCtrl.tabList"
+              data-menu-item="workflow-map"
+              ng-click="tabsCtrl.updateTab(tab.active);"
+              role="menuitem"
+              tabindex="0"
+              class="ng-hide"
+              aria-hidden="true"
+            >
+              <div
+                id="workflow-map-coach-mark-anchor"
+                class="tab-coach-mark-anchor"
+              ></div>
+              <a
+                data-ng-href="/plm/workspaces/1959/items/workflowMap?view=full&amp;tab=workflow-map&amp;mode=view&amp;itemId=urn%60adsk%2Cplm%60tenant%2Cworkspace%2Citem%60TRAININGGUNDERSEN%2C1959%2C22455"
+                ng-class="{'disabled': !$first &amp;&amp; !allowTabLinks}"
+                title="Workflow Actions"
+                href="/plm/workspaces/1959/items/workflowMap?view=full&amp;tab=workflow-map&amp;mode=view&amp;itemId=urn%60adsk%2Cplm%60tenant%2Cworkspace%2Citem%60TRAININGGUNDERSEN%2C1959%2C22455"
+                >Workflow Actions
+              </a>
+            </li>
+            <!---->
+            <li
+              ng-repeat="tab in tabsCtrl.tabList"
+              data-menu-item="change-log"
+              ng-click="tabsCtrl.updateTab(tab.active);"
+              role="menuitem"
+              tabindex="0"
+              aria-hidden="false"
+            >
+              <div
+                id="change-log-coach-mark-anchor"
+                class="tab-coach-mark-anchor"
+              ></div>
+              <a
+                data-ng-href="/plm/workspaces/1959/items/changeLog?view=full&amp;tab=change-log&amp;mode=view&amp;itemId=urn%60adsk%2Cplm%60tenant%2Cworkspace%2Citem%60TRAININGGUNDERSEN%2C1959%2C22455"
+                ng-class="{'disabled': !$first &amp;&amp; !allowTabLinks}"
+                title="Change Log"
+                href="/plm/workspaces/1959/items/changeLog?view=full&amp;tab=change-log&amp;mode=view&amp;itemId=urn%60adsk%2Cplm%60tenant%2Cworkspace%2Citem%60TRAININGGUNDERSEN%2C1959%2C22455"
+                >Change Log (4)</a
+              >
+            </li>
+            <!---->
+          </ul>
+        </li></span
+      >
+    </ul></md-toolbar
+  ></tabs-menu
+>

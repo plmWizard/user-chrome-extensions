@@ -1,0 +1,41 @@
+/* Base look to mimic FM buttons, color comes from --aw-btn-color */
+.aw-action-btn {
+  --aw-btn-color: #ff7a00;         /* fallback */
+  --aw-btn-text: #ffffff;
+
+  appearance: none;
+  border: 0;
+  border-radius: 2px;
+  padding: 6px 12px;
+  line-height: 1.25;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  background: var(--aw-btn-color);
+  color: var(--aw-btn-text);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  box-shadow: 0 1px 0 rgba(0,0,0,.05);
+  transition: filter .15s ease, transform .02s ease;
+}
+
+.aw-action-btn:hover   { filter: brightness(1.06); }
+.aw-action-btn:active  { transform: translateY(1px); }
+.aw-action-btn[disabled] {
+  opacity: .6; cursor: default; pointer-events: none;
+}
+
+/* Micro spacers so buttons blend into each bar neatly */
+.aw-action-slot { display: inline-flex; align-items: center; gap: 8px; }
+
+/* Command bar specific paddings so height matches FM bars */
+#command-bar-react .aw-action-btn      { padding: 8px 14px; margin-left: 2px;}  /* itemDetails (React bar) */
+#command-bar .aw-action-btn            { padding: 8px 14px; }  /* grid/bom (Angular bars)   */
+
+/* Prevent double-wrap on narrow bars */
+.grid-command-bar .aw-action-slot,
+.bom-command-bar .aw-action-slot { flex-wrap: nowrap; }

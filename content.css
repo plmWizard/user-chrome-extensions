@@ -1,0 +1,68 @@
+/* Full-width row just under the native tabs */
+#aw-second-tabs-root {
+  display: block;
+  width: 100%;
+  flex: 0 0 auto;
+}
+
+/* Bar: match FM look (only a bottom divider); align start using a CSS var */
+.aw-second-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 32px;                         /* spacing between tabs like FM */
+  padding: 0 12px;                   /* same horizontal breathing room */
+  border-top: 0;
+  border-bottom: 1px solid #e5e8ee;  /* light divider like FM */
+  width: 100%;
+  margin-left: var(--aw-tabs-left, 40px); /* align to native tabs start */
+}
+
+/* Tabs: text-only, orange, with an underline when active (FM style) */
+.aw-second-tab {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+
+  font-size: 14px;                   /* close to FM size */
+  line-height: 1;
+  padding: 14px 0;                   /* give it a tab hit area */
+  color: #ff7a00;                    /* orange label */
+  position: relative;
+  font-weight: 500;
+}
+
+/* Hover = slightly brighter orange */
+.aw-second-tab:hover {
+  color: black;
+}
+
+/* Active = orange underline (FM uses a colored bar under the tab) */
+.aw-second-tab.active::after {
+  content: "";
+  color: black;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;                      /* sits on top of the divider */
+  height: 3px;
+  background: #ff7a00;
+  border-radius: 2px;
+}
+
+/* Content area under the bar */
+.aw-second-tabs-content {
+  display: none;                     /* hidden until a tab is active */
+  width: 100%;
+  height: 600px;                     /* tweak as you like */
+  border: 1px solid #e5e8ee;
+  border-top: none;                  /* let the bar’s divider be the top edge */
+  padding: 0;
+}
+.aw-second-tabs-content.active { display: block; }
+
+.aw-second-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
