@@ -1,54 +1,27 @@
-// == Color from Workspace Description =======================================
-// Reads {color: #RRGGBB} from /api/v2/workspaces/{wsId}.description and
-// sets Fusion Manage theme variables dynamically.
-//
-// Sets:
-//  --item-bg
-//  --item-menu
-//  --tab-text-color
-//  --color-bg            (darker tone)
-//  --bg-input            (darker tone)
-//  --button-color-text   (white/black based on contrast)
-//  --button-active       (derived from base color)
-//  --button-hover-border-color (derived from base color)
-//
-// Save as: color-from-workspace.js
-// Load on all FM pages that show items/tabs. Runs on navigation changes too.
 (() => {
   const DBG = true;
   const log = (...a) => DBG && console.log("[WS Color]", ...a);
   const warn = (...a) => DBG && console.warn("[WS Color]", ...a);
   const err = (...a) => console.error("[WS Color]", ...a);
 
-  // --- Tunables -------------------------------------------------------------
-
-  // Contrast cutoff for deciding white vs black text (0 = dark, 1 = bright).
-  // You can tweak this if you want "more white text".
   const LUMINANCE_WHITE_CUTOFF = 0.9;
-
-  // Force white text for specific brand colors even if they’re "light".
-  const FORCE_WHITE_HEX = new Set([
-    "#ff8000", // your example
-    "#0696d7", // your example
-  ]);
-
-  // How much to darken for "darker tones"
-  const DARKEN_BG = 0.1; //
+  const FORCE_WHITE_HEX = new Set(["#ff8000", "#0696d7"]);
+  const DARKEN_BG = 0.1;
   const DARKEN_INPUT = 0.2;
+  const LIGHTEN_ACTIVE = 0.2;
+  const DARKEN_BORDER = 0.2;
+  const LIGHTEN_ITEM_BG = 0;
+  const DARKEN_ITEM_MENU = 0.1;
 
-  // Button derivations
-  const LIGHTEN_ACTIVE = 0.2; // 20% lighter than base for --button-active
-  const DARKEN_BORDER = 0.2; // 20% darker than base for --button-hover-border-color
-
-  // Slight separation between item-bg and item-menu for depth
-  const LIGHTEN_ITEM_BG = 0; // item-bg is base lightened 12%
-  const DARKEN_ITEM_MENU = 0.1; // item-menu is base darkened 18%
-
-  // Cache to avoid refetching on same workspace
   let lastWsId = null;
   let lastAppliedHex = null;
 
-  // --- Utilities ------------------------------------------------------------
+  async function isEnabled() {
+    if (typeof window.__AW_GET_SETTING__ === "function") {
+      return await window.__AW_GET_SETTING__("workspaceColors");
+    }
+    return true;
+  }
 
   const clamp01 = (x) => Math.min(1, Math.max(0, x));
 
@@ -56,11 +29,7 @@
     if (!hex) return null;
     hex = hex.trim().toLowerCase();
     if (hex.startsWith("#")) hex = hex.slice(1);
-    if (hex.length === 3)
-      hex = hex
-        .split("")
-        .map((c) => c + c)
-        .join("");
+    if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
     if (/^[0-9a-f]{6}$/.test(hex)) return "#" + hex;
     return null;
   }
@@ -68,13 +37,13 @@
   function hexToRgb(hex) {
     hex = hexNorm(hex);
     if (!hex) return null;
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return { r, g, b };
+    return {
+      r: parseInt(hex.slice(1, 3), 16),
+      g: parseInt(hex.slice(3, 5), 16),
+      b: parseInt(hex.slice(5, 7), 16),
+    };
   }
 
-  // relative luminance (WCAG)
   function relLum({ r, g, b }) {
     const srgb = [r, g, b].map((v) => v / 255);
     const lin = srgb.map((v) =>
@@ -83,16 +52,10 @@
     return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
   }
 
-  // lighten/darken via HSL lightness shift
   function rgbToHsl({ r, g, b }) {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    const max = Math.max(r, g, b),
-      min = Math.min(r, g, b);
-    let h,
-      s,
-      l = (max + min) / 2;
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
 
     if (max === min) {
       h = s = 0;
@@ -100,15 +63,9 @@
       const d = max - min;
       s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
       switch (max) {
-        case r:
-          h = (g - b) / d + (g < b ? 6 : 0);
-          break;
-        case g:
-          h = (b - r) / d + 2;
-          break;
-        default:
-          h = (r - g) / d + 4;
-          break;
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        default: h = (r - g) / d + 4; break;
       }
       h /= 6;
     }
@@ -124,8 +81,8 @@
       if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
       return p;
     }
-    let r, g, b;
 
+    let r, g, b;
     if (s === 0) {
       r = g = b = l;
     } else {
@@ -135,6 +92,7 @@
       g = hue2rgb(p, q, h);
       b = hue2rgb(p, q, h - 1 / 3);
     }
+
     return {
       r: Math.round(r * 255),
       g: Math.round(g * 255),
@@ -142,18 +100,17 @@
     };
   }
 
-  function shiftLightness(hex, delta /* -1..+1 */) {
+  function rgbToHex({ r, g, b }) {
+    const to2 = (v) => v.toString(16).padStart(2, "0");
+    return "#" + to2(r) + to2(g) + to2(b);
+  }
+
+  function shiftLightness(hex, delta) {
     const rgb = hexToRgb(hex);
     if (!rgb) return null;
     const hsl = rgbToHsl(rgb);
     hsl.l = clamp01(hsl.l + delta);
-    const out = hslToRgb(hsl);
-    return rgbToHex(out);
-  }
-
-  function rgbToHex({ r, g, b }) {
-    const to2 = (v) => v.toString(16).padStart(2, "0");
-    return "#" + to2(r) + to2(g) + to2(b);
+    return rgbToHex(hslToRgb(hsl));
   }
 
   function isWhiteText(hex) {
@@ -161,15 +118,10 @@
     if (!norm) return true;
     if (FORCE_WHITE_HEX.has(norm)) return true;
     const lum = relLum(hexToRgb(norm));
-    return lum <= LUMINANCE_WHITE_CUTOFF; // brighter backgrounds -> white text
+    return lum <= LUMINANCE_WHITE_CUTOFF;
   }
 
-  // --- Workspace / URL helpers ---------------------------------------------
-
   function getWorkspaceIdFromUrl() {
-    // examples:
-    // .../workspaces/1994/items/22593...
-    // .../workspaces/1994...
     const m = location.href.match(/\/workspaces\/(\d+)/i);
     return m ? m[1] : null;
   }
@@ -184,25 +136,52 @@
         "X-Requested-With": "XMLHttpRequest",
       },
     });
-    if (!res.ok)
-      throw new Error(
-        `WS ${wsId} fetch failed: ${res.status} ${res.statusText}`
-      );
+    if (!res.ok) throw new Error(`WS ${wsId} fetch failed: ${res.status} ${res.statusText}`);
     return res.json();
   }
 
   function pickHexFromDescription(desc) {
     if (!desc || typeof desc !== "string") return null;
-    // supports "{color: #00ff80}" (spaces optional, case-insensitive)
     const m = desc.match(/\{\s*color\s*:\s*(#[0-9a-fA-F]{3,6})\s*\}/);
     return m ? hexNorm(m[1]) : null;
   }
 
-  // --- Apply Variables ------------------------------------------------------
-
   function setVarsOn(el, map) {
     if (!el) return;
-    for (const [k, v] of Object.entries(map)) el.style.setProperty(k, v);
+    for (const [k, v] of Object.entries(map)) {
+      el.style.setProperty(k, v);
+    }
+  }
+
+  function clearAppliedStyles() {
+    const vars = [
+      "--item-bg",
+      "--item-menu",
+      "--bg-menu",
+      "--tab-text-color",
+      "--color-bg",
+      "--bg-input",
+      "--button-color-text",
+      "--button-active",
+      "--button-active-bg",
+      "--button-hover-border-color"
+    ];
+
+    [document.documentElement, document.body].forEach((el) => {
+      if (!el) return;
+      vars.forEach((v) => el.style.removeProperty(v));
+    });
+
+    [
+      "aw-wscolor-style",
+      "aw-wscolor-mui-contained",
+      "aw-wscolor-workflow-state-current"
+    ].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+
+    lastAppliedHex = null;
   }
 
   function applyColorVariables(baseHex) {
@@ -215,7 +194,7 @@
 
     const whiteText = isWhiteText(baseHex);
     const textColor = whiteText ? "#ffffff" : "#000000";
-    const tabTextColor = itemMenu;/*!isWhiteText(itemMenu) ? "#ffffff" : "#000000";*/
+    const tabTextColor = itemMenu;
 
     const vars = {
       "--item-bg": itemBg,
@@ -230,75 +209,14 @@
       "--button-hover-border-color": hoverBord,
     };
 
-    (function ensureMuiContainedBtnColors() {
-  const id = "aw-wscolor-mui-contained";
-  let tag = document.getElementById(id);
-  if (!tag) {
-    tag = document.createElement("style");
-    tag.id = id;
-    document.head.appendChild(tag);
-  }
-  tag.textContent = `
-.css-kfcjdq.MuiButton-contained {
-  background-color: var(--item-bg) !important;
-  border-color: var(--bg-menu) !important;
-  color: var(--button-color-text) !important;
-}
-
-/* Stable selectors — prefer these */
-.MuiButton-root.MuiButton-contained,
-button.MuiButton-contained,
-[class*="MuiButton-contained"] {
-  background-color: var(--item-bg) !important;
-  border-color: var(--bg-menu) !important;
-  color: var(--button-color-text) !important;
-  background-image: none !important;
-}
-
-/* Hover/active */
-.MuiButton-contained:hover {
-  background-color: var(--button-active) !important;
-  border-color: var(--bg-menu) !important;
-}
-
-/* Disabled */
-.MuiButton-contained.Mui-disabled {
-  opacity: 0.6 !important;
-  pointer-events: none !important;
-}
-`;
-})();
-(function ensureWorkflowStateCurrentColor() {
-  const id = "aw-wscolor-workflow-state-current";
-  let tag = document.getElementById(id);
-  if (!tag) {
-    tag = document.createElement("style");
-    tag.id = id;
-    document.head.appendChild(tag);
-  }
-  tag.textContent = `
-/* Current workflow state chip */
-#workflow-actions-container .workflow-state.workflow-state-current {
-  background-color: var(--button-active) !important;
-  background: var(--button-active) !important;
-}
-`;
-})();
-
-
-    // Apply to all likely hosts (proximity beats :root in CSS vars)
     const hosts = new Set([
       document.documentElement,
       document.body,
-      ...document.querySelectorAll(
-        "[data-theme], [data-theme] *:host, #root, .root, .app-root, .fl-root"
-      ),
+      ...document.querySelectorAll("[data-theme], #root, .root, .app-root, .fl-root")
     ]);
     hosts.forEach((el) => setVarsOn(el, vars));
 
-    // Extra belt & braces: keep a <style> synced so late CSS doesn’t stomp values
-    const id = "aw-wscolor-style";
-    let tag = document.getElementById(id);
+    let tag = document.getElementById("aw-wscolor-style");
     const css = `
 :root, body, [data-theme], #root, .root, .app-root, .fl-root {
   --item-bg: ${itemBg};
@@ -312,28 +230,63 @@ button.MuiButton-contained,
 }`;
     if (!tag) {
       tag = document.createElement("style");
-      tag.id = id;
+      tag.id = "aw-wscolor-style";
       document.head.appendChild(tag);
     }
     tag.textContent = css;
 
+    let mui = document.getElementById("aw-wscolor-mui-contained");
+    if (!mui) {
+      mui = document.createElement("style");
+      mui.id = "aw-wscolor-mui-contained";
+      document.head.appendChild(mui);
+    }
+    mui.textContent = `
+.css-kfcjdq.MuiButton-contained {
+  background-color: var(--item-bg) !important;
+  border-color: var(--bg-menu) !important;
+  color: var(--button-color-text) !important;
+}
+.MuiButton-root.MuiButton-contained,
+button.MuiButton-contained,
+[class*="MuiButton-contained"] {
+  background-color: var(--item-bg) !important;
+  border-color: var(--bg-menu) !important;
+  color: var(--button-color-text) !important;
+  background-image: none !important;
+}
+.MuiButton-contained:hover {
+  background-color: var(--button-active) !important;
+  border-color: var(--bg-menu) !important;
+}
+.MuiButton-contained.Mui-disabled {
+  opacity: 0.6 !important;
+  pointer-events: none !important;
+}
+`;
+
+    let wf = document.getElementById("aw-wscolor-workflow-state-current");
+    if (!wf) {
+      wf = document.createElement("style");
+      wf.id = "aw-wscolor-workflow-state-current";
+      document.head.appendChild(wf);
+    }
+    wf.textContent = `
+#workflow-actions-container .workflow-state.workflow-state-current {
+  background-color: var(--button-active) !important;
+  background: var(--button-active) !important;
+}
+`;
+
     lastAppliedHex = baseHex;
-    log("Applied base:", baseHex, {
-      itemBg,
-      itemMenu,
-      colorBg,
-      bgInput,
-      tabTextColor,
-      textColor,
-      active,
-      hoverBord,
-    });
+    log("Applied base:", baseHex);
   }
 
-  // Observe theme/host changes so FM SPA updates don’t revert the vars
-  const mo = new MutationObserver(() => {
+  const mo = new MutationObserver(async () => {
+    if (!(await isEnabled())) return;
     if (lastAppliedHex) applyColorVariables(lastAppliedHex);
   });
+
   mo.observe(document.documentElement, {
     attributes: true,
     subtree: true,
@@ -341,13 +294,18 @@ button.MuiButton-contained,
   });
 
   async function runOnce() {
+    if (!(await isEnabled())) {
+      clearAppliedStyles();
+      return;
+    }
+
     const wsId = getWorkspaceIdFromUrl();
     if (!wsId) {
       warn("No workspace in URL");
       return;
     }
+
     if (wsId === lastWsId && lastAppliedHex) {
-      log("Same workspace; color already applied:", wsId, lastAppliedHex);
       return;
     }
     lastWsId = wsId;
@@ -355,20 +313,12 @@ button.MuiButton-contained,
     try {
       const ws = await fetchWorkspace(wsId);
       const baseHex = pickHexFromDescription(ws?.description) || "#06402B";
-      if (!baseHex) {
-        warn(
-          `Workspace ${wsId} has no {color: #...} in description. Skipping.`
-        );
-        return;
-      }
       applyColorVariables(baseHex);
     } catch (e) {
       err(e);
     }
   }
 
-  // --- Re-run on navigation -------------------------------------------------
-  // Fusion Manage is SPA-like; observe URL changes and re-run.
   let prevUrl = location.href;
   setInterval(() => {
     if (location.href !== prevUrl) {
@@ -377,7 +327,15 @@ button.MuiButton-contained,
     }
   }, 600);
 
-  // Initial
+  if (typeof window.__AW_ON_SETTINGS_CHANGED__ === "function") {
+    window.__AW_ON_SETTINGS_CHANGED__((changes) => {
+      if (changes.workspaceColors) {
+        if (changes.workspaceColors.newValue) runOnce();
+        else clearAppliedStyles();
+      }
+    });
+  }
+
   document.readyState === "loading"
     ? document.addEventListener("DOMContentLoaded", runOnce, { once: true })
     : runOnce();

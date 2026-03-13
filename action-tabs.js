@@ -1,27 +1,24 @@
-// == FM Action Buttons ==
-// Adds action buttons to native FM tabs based on scripts displayName metadata.
-//
-// New syntax example (only creates a button when mode=button):
-// "Create tasks for all rows that dont have tasks assigned to it. {tab: bom, mode: button [color: #00FF80, name: Create Tasks]}"
-//
-// - Text BEFORE the first "{" becomes a tooltip (shown on hover).
-// - Inside { ... } you must have: tab: <tabToken>, mode: button [ ...options... ]
-// - Options inside [ ... ] can include: color: #RRGGBB, name: <Button Label>
-
 (() => {
   const MOD_ID = "aw-action-buttons";
-  const HOST_ID_PREFIX = "aw-action-host-"; // per-tab
+  const HOST_ID_PREFIX = "aw-action-host-";
   let lastUrl = "";
   let lastKey = "";
 
-  /* ------------------------ URL / IDs ------------------------ */
+  async function getSettings() {
+    if (typeof window.__AW_GET_SETTINGS__ === "function") {
+      return await window.__AW_GET_SETTINGS__();
+    }
+    return {
+      actionButtons: true,
+      onEditRunner: true
+    };
+  }
 
   function getWsAndDmsFromUrl() {
     const parts = location.pathname.split("/").filter(Boolean);
     const wsIndex = parts.indexOf("workspaces");
     const wsId = wsIndex >= 0 ? parts[wsIndex + 1] : null;
 
-    // dmsId comes from itemId=urn`... ,<ws>,<dmsId>
     const params = new URLSearchParams(location.search);
     const rawItemId = params.get("itemId");
     let dmsId = null;
@@ -34,25 +31,21 @@
   }
 
   function currentTabToken() {
-    // Prefer pathname; fallback to ?tab=
     const p = location.pathname;
     if (p.includes("/itemDetails")) return "itemDetails";
     if (p.includes("/grid")) return "grid";
     if (p.includes("/bom/")) return "bom";
     if (p.includes("/workflowMap")) return "workflowMap";
-    const q = new URLSearchParams(location.search).get("tab");
-    return q || "";
+    return new URLSearchParams(location.search).get("tab") || "";
   }
 
   function getModeFromUrl() {
-    const q = new URLSearchParams(location.search);
-    return (q.get("mode") || "").toLowerCase(); // 'view' | 'edit' | ''
+    return (new URLSearchParams(location.search).get("mode") || "").toLowerCase();
   }
+
   function isEditMode() {
     return getModeFromUrl() === "edit";
   }
-
-  /* ------------------------ Fetch item scripts ------------------------ */
 
   async function fetchScripts(wsId, dmsId) {
     const url = `/api/v3/workspaces/${wsId}/items/${dmsId}/scripts`;
@@ -60,15 +53,12 @@
       headers: { Accept: "application/json" },
       credentials: "same-origin",
     });
-    if (!res.ok)
+    if (!res.ok) {
       throw new Error(`Scripts fetch failed: ${res.status} ${res.statusText}`);
+    }
     return res.json();
   }
 
-  /* ------------------------ Parse displayName ------------------------ */
-
-  // New syntax:
-  // "<tooltip text> {tab: <tabToken>, mode: button [color: #HEX, name: Label]}"
   function parseDisplayNameMeta(displayName, fallbackName) {
     if (!displayName) return null;
 
@@ -81,12 +71,10 @@
 
     const inner = m[1];
 
-    // Extract tab
     let tab = null;
     const tabM = inner.match(/tab\s*:\s*([a-zA-Z]+)/i);
     if (tabM) tab = tabM[1];
 
-    // Extract mode and bracketed options
     let mode = null;
     let bracketRaw = "";
     const modeM = inner.match(/mode\s*:\s*([a-zA-Z]+)(?:\s*\[([^\]]*)\])?/i);
@@ -95,15 +83,14 @@
       bracketRaw = modeM[2] || "";
     }
 
-    // Parse [ color: #..., name: ... ] as simple comma-separated key:value
     const opts = {};
     if (bracketRaw) {
       bracketRaw.split(",").forEach((pair) => {
-        const [kRaw, vRaw] = pair.split(":");
-        if (!kRaw || !vRaw) return;
-        const k = kRaw.trim().toLowerCase(); // color | name | (future)
-        const v = vRaw.trim().replace(/^['"]|['"]$/g, "");
-        opts[k] = v;
+        const idx = pair.indexOf(":");
+        if (idx === -1) return;
+        const k = pair.slice(0, idx).trim().toLowerCase();
+        const v = pair.slice(idx + 1).trim().replace(/^['"]|['"]$/g, "");
+        if (k) opts[k] = v;
       });
     }
 
@@ -111,48 +98,37 @@
 
     return {
       tab,
-      mode: mode || "", // 'button' required for rendering
+      mode: mode || "",
       color: opts.color || "#FF8000",
       name: opts.name || fallbackName || "Run",
-      tooltip: tooltip || "", // text before '{...}'
+      tooltip: tooltip || "",
     };
   }
 
-  /* ------------------------ DOM anchors (native bars) ------------------------ */
-
   function findItemDetailsAnchor() {
-    // React bar: <div id="command-bar-react"><div class="weave-button-wrapper">...</div></div>
     const reactBar = document.querySelector("#command-bar-react");
     if (reactBar) {
       const after = reactBar.querySelector(".weave-button-wrapper");
-      if (after && after.parentElement)
-        return { parent: after.parentElement, after };
+      if (after && after.parentElement) return { parent: after.parentElement, after };
       return { parent: reactBar, after: reactBar.lastElementChild };
     }
-    // Fallback (rare): Angular bar
-    const fallback = document.querySelector(
-      "plm-command-bar #command-bar .grid-command-bar"
-    );
+
+    const fallback = document.querySelector("plm-command-bar #command-bar .grid-command-bar");
     if (fallback) return { parent: fallback, after: fallback.lastElementChild };
     return null;
   }
 
   function findGridAnchor() {
-    const el = document.querySelector(
-      "plm-command-bar #command-bar .grid-command-bar"
-    );
+    const el = document.querySelector("plm-command-bar #command-bar .grid-command-bar");
     if (!el) return null;
     return { parent: el, after: el.lastElementChild };
   }
 
   function findBomAnchor() {
-    const bar = document.querySelector(
-      "plm-command-bar #command-bar .bom-command-bar"
-    );
+    const bar = document.querySelector("plm-command-bar #command-bar .bom-command-bar");
     if (!bar) return null;
     const right = bar.querySelector(".command-bar-right");
-    if (right && right.parentElement)
-      return { parent: right.parentElement, before: right };
+    if (right && right.parentElement) return { parent: right.parentElement, before: right };
     return { parent: bar, after: bar.lastElementChild };
   }
 
@@ -162,8 +138,6 @@
     if (tab === "bom") return findBomAnchor();
     return null;
   }
-
-  /* ------------------------ Rendering ------------------------ */
 
   function ensureHost(parent, where, tabToken) {
     const id = HOST_ID_PREFIX + tabToken;
@@ -189,61 +163,47 @@
     });
   }
 
-  /* ---- color utilities ---- */
   function normalizeHex(hex) {
     let h = hex.trim().toUpperCase();
     if (h.startsWith("#")) h = h.slice(1);
-    if (h.length === 3)
-      h = h
-        .split("")
-        .map((c) => c + c)
-        .join("");
+    if (h.length === 3) h = h.split("").map((c) => c + c).join("");
     return "#" + h;
   }
+
   function hexToRgb(hex) {
     const h = normalizeHex(hex).slice(1);
     const n = parseInt(h, 16);
     return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
   }
+
   function parseColorToRgb(color) {
     if (!color) return null;
     color = color.trim();
     if (color.startsWith("#")) return hexToRgb(color);
-    const m = color.match(
-      /rgba?\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i
-    );
+    const m = color.match(/rgba?\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
     if (m) return { r: +m[1], g: +m[2], b: +m[3] };
     return null;
   }
+
   function relLuminance({ r, g, b }) {
     const srgb = [r, g, b].map((v) => v / 255);
-    const lin = srgb.map((v) =>
-      v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
-    );
+    const lin = srgb.map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
     return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
   }
 
   function pickTextColor(bgColor, opts = {}) {
-    const {
-      threshold = 4.5,
-      forceWhite = [],
-      forceBlack = [],
-      bias = 0,
-    } = opts;
+    const { threshold = 4.5, forceWhite = [], forceBlack = [], bias = 0 } = opts;
 
-    const hexNorm =
-      bgColor && bgColor.startsWith("#") ? normalizeHex(bgColor) : null;
-    if (hexNorm && forceWhite.map(normalizeHex).includes(hexNorm))
-      return "#fff";
-    if (hexNorm && forceBlack.map(normalizeHex).includes(hexNorm))
-      return "#000";
+    const hexNorm = bgColor && bgColor.startsWith("#") ? normalizeHex(bgColor) : null;
+    if (hexNorm && forceWhite.map(normalizeHex).includes(hexNorm)) return "#fff";
+    if (hexNorm && forceBlack.map(normalizeHex).includes(hexNorm)) return "#000";
 
     const rgb = parseColorToRgb(bgColor);
     if (!rgb) return "#fff";
 
     const Lbg = relLuminance(rgb);
     const contrastWhite = (1.0 + 0.05) / (Lbg + 0.05);
-    const contrastBlack = (Lbg + 0.05) / (0.0 + 0.05);
+    const contrastBlack = (Lbg + 0.05) / 0.05;
 
     const whiteOK = contrastWhite >= threshold;
     const blackOK = contrastBlack >= threshold;
@@ -304,11 +264,8 @@
     document.head.appendChild(style);
   }
 
-  /* ------------------------ Headers & POST runner ------------------------ */
-
   function guessTenant() {
-    const host = location.hostname.split(".")[0] || "";
-    return host;
+    return location.hostname.split(".")[0] || "";
   }
 
   function readCookie(name) {
@@ -316,8 +273,7 @@
     const parts = document.cookie ? document.cookie.split(";") : [];
     for (let part of parts) {
       part = part.trim();
-      if (part.startsWith(prefix))
-        return decodeURIComponent(part.slice(prefix.length));
+      if (part.startsWith(prefix)) return decodeURIComponent(part.slice(prefix.length));
     }
     return null;
   }
@@ -337,9 +293,7 @@
 
   function findAccessToken() {
     return (
-      findInStorage(
-        (k, v) => typeof v === "string" && /^\w+\.\w+\.\w+$/.test(v)
-      ) ||
+      findInStorage((k, v) => typeof v === "string" && /^\w+\.\w+\.\w+$/.test(v)) ||
       readCookie("access_token") ||
       readCookie("id_token") ||
       null
@@ -347,9 +301,7 @@
   }
 
   function findUserId() {
-    const fromStorage = findInStorage(
-      (k, v) => /user.?id/i.test(k) && /^\d+$/.test(v)
-    );
+    const fromStorage = findInStorage((k, v) => /user.?id/i.test(k) && /^\d+$/.test(v));
     if (fromStorage) return fromStorage;
     const fromCookie = readCookie("X-user-id") || readCookie("userId");
     if (fromCookie && /^\d+$/.test(fromCookie)) return fromCookie;
@@ -399,17 +351,10 @@
           const res = await tryPost(u, withBody);
           if (res.ok) return true;
           const text = await (async () => {
-            try {
-              return await res.text();
-            } catch {
-              return "";
-            }
+            try { return await res.text(); } catch { return ""; }
           })();
-          lastErr = `POST ${u} ${withBody ? "(body)" : "(no body)"} → ${
-            res.status
-          } ${res.statusText}${text ? " – " + text : ""}`;
-          if (![400, 401, 403, 404, 405, 415].includes(res.status))
-            throw new Error(lastErr);
+          lastErr = `POST ${u} ${withBody ? "(body)" : "(no body)"} → ${res.status} ${res.statusText}${text ? " – " + text : ""}`;
+          if (![400, 401, 403, 404, 405, 415].includes(res.status)) throw new Error(lastErr);
         } catch (e) {
           lastErr = String(e);
         }
@@ -419,14 +364,13 @@
   }
 
   async function runScript(selfLink, btn) {
-    if (isEditMode()) return; // extra safety; should already be disabled
+    if (isEditMode()) return;
     btn.disabled = true;
     const spinner = document.createElement("span");
     spinner.className = "aw-spin";
     btn.appendChild(spinner);
     try {
-      const ok = await runScriptByVariants(selfLink);
-      console.log("[FM Action Buttons] OK:", ok);
+      await runScriptByVariants(selfLink);
     } catch (e) {
       console.error("[FM Action Buttons] Error:", e);
       alert("Action failed.\n" + e);
@@ -436,25 +380,17 @@
     }
   }
 
-  /* ------------------------ Build for current tab ------------------------ */
-
   function extractActionsForTab(scriptsJson, wantTab) {
     const out = [];
     const arr = (scriptsJson && scriptsJson.scripts) || [];
     for (const s of arr) {
-      const meta = parseDisplayNameMeta(
-        s.displayName || "",
-        s.uniqueName || "Run"
-      );
+      const meta = parseDisplayNameMeta(s.displayName || "", s.uniqueName || "Run");
       if (!meta) continue;
       if ((meta.mode || "") !== "button") continue;
 
-      if (
-        meta.tab &&
-        meta.tab.toLowerCase() === (wantTab || "").toLowerCase()
-      ) {
+      if (meta.tab && meta.tab.toLowerCase() === (wantTab || "").toLowerCase()) {
         out.push({
-          id: s.__self__, // full self link to POST
+          id: s.__self__,
           name: meta.name,
           color: meta.color || "#FF8000",
           tooltip: meta.tooltip || "",
@@ -470,7 +406,7 @@
     if (!where) return false;
 
     const host = ensureHost(where.parent, where, tab);
-    const ids = actions.map((a) => a.id.replace(/[^\d]+/g, "")); // numeric uniqueness
+    const ids = actions.map((a) => a.id.replace(/[^\d]+/g, ""));
     clearDuplicates(host, ids);
 
     for (const a of actions) {
@@ -491,48 +427,40 @@
     return true;
   }
 
-  /* ------------------------ Network tap (watch POST/PATCH/DELETE) ------------------------ */
+  function clearButtonsForCurrentTab(tab) {
+    const host = document.getElementById(HOST_ID_PREFIX + tab);
+    if (host) host.remove();
+  }
 
   function isMutationMethod(m) {
     return ["POST", "PATCH", "DELETE"].includes(String(m || "").toUpperCase());
   }
 
-  // Build matchers on the fly for the current item
   function isInterestingUrl(url) {
     try {
-      const u = new URL(url, location.origin); // handle relative urls
-      const { wsId, dmsId } = getWsAndDmsFromUrl();
-      if (!wsId || !dmsId) return false;
-
-      // Want these shapes (any workspace ok, but same dmsId):
-      // /api/v3/workspaces/<ws>/items/<dmsId>/attachments
-      // /api/v3/workspaces/<ws>/items/<dmsId>/bom-items
-      // /api/v3/workspaces/<ws>/items/<dmsId>/bom-items/<anything>
-      const re = new RegExp(
-        String.raw`^/api/v3/workspaces/\d+/items/${dmsId}/(attachments|bom-items)(?:/.*)?$`
-      );
+      const u = new URL(url, location.origin);
+      const { dmsId } = getWsAndDmsFromUrl();
+      if (!dmsId) return false;
+      const re = new RegExp(String.raw`^/api/v3/workspaces/\d+/items/${dmsId}/(attachments|bom-items)(?:/.*)?$`);
       return re.test(u.pathname);
     } catch {
       return false;
     }
   }
 
-  // Debounced refresh so rapid burst of calls only triggers one rebuild
   let refreshTimer = null;
   function scheduleRefresh() {
     if (refreshTimer) clearTimeout(refreshTimer);
     refreshTimer = setTimeout(() => {
       refreshTimer = null;
-      requestAnimationFrame(injectOnce);
+      requestAnimationFrame(() => injectOnce(true));
     }, 120);
   }
 
   function hookFetchAndXHR() {
-    // Guard against double-hook
     if (window.__AW_NET_HOOKED__) return;
     window.__AW_NET_HOOKED__ = true;
 
-    /* ---- fetch ---- */
     const _fetch = window.fetch;
     window.fetch = function (input, init) {
       try {
@@ -544,26 +472,16 @@
           typeof input === "string" ? input : (input && input.url) || "";
 
         if (isMutationMethod(method) && isInterestingUrl(url)) {
-          // After the request settles, trigger refresh
           return _fetch(input, init).finally(scheduleRefresh);
         }
-      } catch {
-        // fall through
-      }
+      } catch {}
       return _fetch(input, init);
     };
 
-    /* ---- XHR ---- */
     const _open = XMLHttpRequest.prototype.open;
     const _send = XMLHttpRequest.prototype.send;
 
-    XMLHttpRequest.prototype.open = function (
-      method,
-      url,
-      async,
-      user,
-      password
-    ) {
+    XMLHttpRequest.prototype.open = function (method, url, async, user, password) {
       this.__aw_method = method;
       this.__aw_url = url;
       return _open.apply(this, arguments);
@@ -571,36 +489,37 @@
 
     XMLHttpRequest.prototype.send = function (body) {
       try {
-        if (
-          isMutationMethod(this.__aw_method) &&
-          isInterestingUrl(this.__aw_url)
-        ) {
+        if (isMutationMethod(this.__aw_method) && isInterestingUrl(this.__aw_url)) {
           this.addEventListener("loadend", scheduleRefresh);
         }
-      } catch {
-        // ignore
-      }
+      } catch {}
       return _send.apply(this, arguments);
     };
   }
 
-  /* ------------------------ Controller ------------------------ */
+  async function injectOnce(force = false) {
+    const settings = await getSettings();
+    const shouldPublish = !!settings.actionButtons || !!settings.onEditRunner;
+    const shouldRenderButtons = !!settings.actionButtons;
 
-  async function injectOnce() {
     const { wsId, dmsId } = getWsAndDmsFromUrl();
     const tab = currentTabToken();
     if (!wsId || !dmsId || !tab) return;
 
+    if (!shouldPublish) {
+      clearButtonsForCurrentTab(tab);
+      window.__AW_ACTION_SCRIPTS = [];
+      return;
+    }
+
     const key = `${wsId}:${dmsId}:${tab}`;
-    if (key === lastKey && document.getElementById(HOST_ID_PREFIX + tab)) {
-      // Update disabled state (mode might have flipped via network activity)
+    if (!force && key === lastKey && document.getElementById(HOST_ID_PREFIX + tab)) {
       const host = document.getElementById(HOST_ID_PREFIX + tab);
       if (host) {
         const nowEdit = isEditMode();
-        host.querySelectorAll("button.aw-action-btn").forEach((b) => {
-          applyDisabledAndTitle(b, nowEdit);
-        });
+        host.querySelectorAll("button.aw-action-btn").forEach((b) => applyDisabledAndTitle(b, nowEdit));
       }
+      if (!shouldRenderButtons) clearButtonsForCurrentTab(tab);
       return;
     }
     lastKey = key;
@@ -608,19 +527,20 @@
     try {
       const data = await fetchScripts(wsId, dmsId);
 
-      // Expose to page (unchanged)
-      (function publishScriptsForOnEdit() {
-        if (!data || !Array.isArray(data.scripts)) return;
+      if (data && Array.isArray(data.scripts)) {
         const allScriptsArray = data.scripts.map((s) => ({
           id: s.__self__,
           name: s.displayName || s.uniqueName || "Unnamed",
+          displayName: s.displayName || s.uniqueName || "Unnamed"
         }));
         window.__AW_ACTION_SCRIPTS = allScriptsArray;
+
         if (typeof window.__AW_RUN_SCRIPT !== "function") {
           window.__AW_RUN_SCRIPT = async function (scriptObj) {
             return runScriptByVariants(scriptObj.id);
           };
         }
+
         try {
           window.dispatchEvent(
             new CustomEvent("aw:scripts-ready", {
@@ -628,17 +548,22 @@
             })
           );
         } catch {}
-      })();
+      }
+
+      if (!shouldRenderButtons) {
+        clearButtonsForCurrentTab(tab);
+        return;
+      }
 
       const actions = extractActionsForTab(data, tab);
-      if (actions.length === 0) return;
+      if (actions.length === 0) {
+        clearButtonsForCurrentTab(tab);
+        return;
+      }
 
-      const edit = isEditMode();
       ensureStyles();
-      mountButtonsForTab(tab, actions, { disabled: edit });
-    } catch (e) {
-      // console.debug("[FM Action Buttons] skip:", e);
-    }
+      mountButtonsForTab(tab, actions, { disabled: isEditMode() });
+    } catch {}
   }
 
   function startObserver() {
@@ -647,14 +572,25 @@
         lastUrl = location.href;
         lastKey = "";
       }
-      requestAnimationFrame(injectOnce);
+      requestAnimationFrame(() => injectOnce());
     });
+
     observer.observe(document.documentElement, {
       childList: true,
       subtree: true,
     });
+
     hookFetchAndXHR();
     injectOnce();
+
+    if (typeof window.__AW_ON_SETTINGS_CHANGED__ === "function") {
+      window.__AW_ON_SETTINGS_CHANGED__((changes) => {
+        if (changes.actionButtons || changes.onEditRunner) {
+          lastKey = "";
+          injectOnce(true);
+        }
+      });
+    }
   }
 
   if (document.readyState === "loading") {

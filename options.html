@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Fusion Manage Extension Settings</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --bg: #111418;
+        --card: #1a1f26;
+        --muted: #9aa4b2;
+        --text: #eef2f7;
+        --accent: #ff8000;
+        --border: #2b3440;
+        --ok: #44c27a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, Arial, sans-serif;
+        background: linear-gradient(180deg, #0f1318 0%, #151b22 100%);
+        color: var(--text);
+        padding: 32px;
+      }
+
+      .wrap {
+        max-width: 760px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+      }
+
+      .sub {
+        color: var(--muted);
+        margin-bottom: 28px;
+      }
+
+      .card {
+        background: rgba(26, 31, 38, 0.95);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .row.input-row {
+        display: block;
+      }
+
+      .meta h2 {
+        font-size: 16px;
+        margin: 0 0 4px;
+      }
+
+      .meta p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.4;
+      }
+
+      .switch {
+        position: relative;
+        width: 56px;
+        height: 32px;
+        flex: 0 0 auto;
+      }
+
+      .switch input {
+        display: none;
+      }
+
+      .slider {
+        position: absolute;
+        inset: 0;
+        background: #3a4350;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: 0.2s ease;
+      }
+
+      .slider::before {
+        content: "";
+        position: absolute;
+        width: 24px;
+        height: 24px;
+        left: 4px;
+        top: 4px;
+        border-radius: 50%;
+        background: white;
+        transition: 0.2s ease;
+      }
+
+      .switch input:checked + .slider {
+        background: var(--accent);
+      }
+
+      .switch input:checked + .slider::before {
+        transform: translateX(24px);
+      }
+
+      .field {
+        margin-top: 10px;
+      }
+
+      .field label {
+        display: block;
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .field input[type="text"],
+      .field input[type="url"] {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: #0f1318;
+        color: var(--text);
+        outline: none;
+      }
+
+      .field input:focus {
+        border-color: var(--accent);
+      }
+
+      .footer {
+        margin-top: 18px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .status {
+        margin-top: 16px;
+        color: var(--ok);
+        font-weight: 600;
+        min-height: 20px;
+      }
+
+      .hint {
+        margin-top: 10px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      code {
+        background: #0f1318;
+        border: 1px solid var(--border);
+        padding: 2px 6px;
+        border-radius: 6px;
+        color: #ffd199;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Fusion Manage Extension Settings</h1>
+      <div class="sub">
+        Flip features on or off and optionally swap the Fusion logo with your
+        own.
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div class="meta">
+            <h2>Second Tabs</h2>
+            <p>
+              Shows the extra tab row under native Fusion Manage tabs and loads
+              tab URLs in an iframe.
+            </p>
+          </div>
+          <label class="switch">
+            <input id="secondTabs" type="checkbox" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="row">
+          <div class="meta">
+            <h2>View Column Search</h2>
+            <p>
+              Adds a small search box under each column header in workspace
+              views and temporarily updates tableau filters.
+            </p>
+          </div>
+          <label class="switch">
+            <input id="viewColumnSearch" type="checkbox" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="row">
+          <div class="meta">
+            <h2>Action Buttons</h2>
+            <p>
+              Shows script-based action buttons on tabs when displayName uses
+              <code>mode: button</code>.
+            </p>
+          </div>
+          <label class="switch">
+            <input id="actionButtons" type="checkbox" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="row">
+          <div class="meta">
+            <h2>On-Edit Runner</h2>
+            <p>
+              Runs scripts tagged with <code>mode: onEdit</code> when edit
+              changes back to view or after BOM/attachment writes.
+            </p>
+          </div>
+          <label class="switch">
+            <input id="onEditRunner" type="checkbox" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="row">
+          <div class="meta">
+            <h2>Workspace Header Colors</h2>
+            <p>
+              Reads <code>{color: #RRGGBB}</code> from workspace description and
+              applies theme variables.
+            </p>
+          </div>
+          <label class="switch">
+            <input id="workspaceColors" type="checkbox" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="row input-row">
+          <div class="meta">
+            <h2>Custom Logo Image URL</h2>
+            <p>
+              If this field is empty, the native Fusion logo is left untouched.
+            </p>
+          </div>
+          <div class="field">
+            <label for="customLogoUrl"
+              >Transparent PNG or other image URL</label
+            >
+            <input
+              id="customLogoUrl"
+              type="url"
+              placeholder="https://example.com/logo.png"
+            />
+          </div>
+        </div>
+
+        <div class="row input-row">
+          <div class="meta">
+            <h2>Custom Logo Click URL</h2>
+            <p>
+              Optional. If filled, clicking the custom logo goes here instead of
+              <code>mainDashboard</code>.
+            </p>
+          </div>
+          <div class="field">
+            <label for="customLogoClickUrl"
+              >Redirect URL when logo is clicked</label
+            >
+            <input
+              id="customLogoClickUrl"
+              type="url"
+              placeholder="https://example.com/"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div id="status" class="status"></div>
+      <div class="hint">
+        After changing settings, refresh Fusion Manage if the page does not
+        update instantly.
+      </div>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>

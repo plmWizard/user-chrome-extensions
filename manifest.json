@@ -1,32 +1,45 @@
 {
   "manifest_version": 3,
   "name": "Fusion Manage – Second Tabs",
-  "version": "1.1.0",
-  "description": "Adds a second tabs menu with a 'Second grid' iframe.",
+  "version": "1.4.2",
+  "description": "Adds toggleable Fusion Manage enhancements like second tabs, action buttons, on-edit runners, workspace colors, custom logo override and column quick search for views.",
   "icons": {
     "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
+  "permissions": ["storage"],
+  "host_permissions": ["https://*.autodeskplm360.net/*"],
+  "options_page": "options.html",
   "content_scripts": [
     {
       "matches": ["https://*.autodeskplm360.net/plm/workspaces/*/items/*"],
-      "js": ["content.js"],
+      "js": ["aw-settings.js", "content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
     },
     {
       "matches": ["https://*.autodeskplm360.net/plm/workspaces/*/items/*"],
-      "js": ["action-tabs.js", "action-onedit-runner.js"],
+      "js": ["aw-settings.js", "action-tabs.js", "action-onedit-runner.js"],
       "css": ["action-tabs.css"],
       "run_at": "document_idle",
       "all_frames": true
     },
     {
       "matches": ["https://*.autodeskplm360.net/plm/workspaces/*/items/*"],
-      "js": ["header-color.js"],
+      "js": ["aw-settings.js", "header-color.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.autodeskplm360.net/*"],
+      "js": ["aw-settings.js", "logo-override.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.autodeskplm360.net/plm/workspaces/*"],
+      "js": ["aw-settings.js", "view-column-search.js"],
+      "run_at": "document_start"
     }
-  ],
-  "host_permissions": ["https://*.autodeskplm360.net/*"]
+  ]
 }
