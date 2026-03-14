@@ -1,12 +1,12 @@
 (() => {
   const DEFAULTS = {
-    secondTabs: true,
-    actionButtons: true,
-    onEditRunner: true,
-    workspaceColors: true,
+    secondTabs: false,
+    actionButtons: false,
+    onEditRunner: false,
+    workspaceColors: false,
     customLogoUrl: "",
     customLogoClickUrl: "",
-    viewColumnSearch: true
+    searchOverlay: false
   };
 
   if (window.__AW_SETTINGS_READY__) return;

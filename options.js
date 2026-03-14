@@ -5,7 +5,7 @@ const DEFAULTS = {
   workspaceColors: true,
   customLogoUrl: "",
   customLogoClickUrl: "",
-  viewColumnSearch: true
+  searchOverlay: true
 };
 
 const ids = Object.keys(DEFAULTS);

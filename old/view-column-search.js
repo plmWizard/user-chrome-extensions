@@ -10,6 +10,9 @@
   let observer = null;
   let injectTick = null;
   let netHooked = false;
+  let navPatched = false;
+  let isRestoringBeforeNav = false;
+  let lastKnownGridSignature = "";
 
   let currentTableauRef = null;
   let latestKnownPutPayload = null;
@@ -55,16 +58,47 @@
     return m ? m[1] : null;
   }
 
-  function isItemPage() {
-    return /\/items\/\d+/i.test(location.pathname);
+  function getTenantFromHost() {
+    return (location.hostname.split(".")[0] || "").toUpperCase();
   }
 
-  function isWorkspacePage() {
-    return /\/plm\/workspaces\/\d+/i.test(location.pathname);
+  function isItemPage(url = location.href) {
+    try {
+      const u = new URL(url, location.origin);
+      return /\/plm\/workspaces\/\d+\/items\/\d+/i.test(u.pathname);
+    } catch {
+      return /\/items\/\d+/i.test(String(url || ""));
+    }
+  }
+
+  function isWorkspacePage(url = location.href) {
+    try {
+      const u = new URL(url, location.origin);
+      return /\/plm\/workspaces\/\d+/i.test(u.pathname);
+    } catch {
+      return /\/plm\/workspaces\/\d+/i.test(String(url || ""));
+    }
+  }
+
+  function isWorkspaceListPage(url = location.href) {
+    try {
+      const u = new URL(url, location.origin);
+      return /\/plm\/workspaces\/\d+\/items$/i.test(u.pathname);
+    } catch {
+      return /\/plm\/workspaces\/\d+\/items$/i.test(String(url || ""));
+    }
   }
 
   function makeStorageKey(workspaceId, tableauId) {
     return `${SESSION_PREFIX}${workspaceId}_${tableauId}`;
+  }
+
+  function getStoredBaselineKeys() {
+    return Object.keys(sessionStorage).filter((k) => k.startsWith(SESSION_PREFIX));
+  }
+
+  function hasStoredBaseline() {
+    return getStoredBaselineKeys().length > 0;
   }
 
   function getTableauRefFromPath(pathname) {
@@ -86,24 +120,68 @@
     } catch {}
   }
 
-  async function fetchJson(url, init = {}) {
+  function findTableauRefFromPerformance() {
+    try {
+      const entries = performance.getEntriesByType("resource") || [];
+      for (let i = entries.length - 1; i >= 0; i--) {
+        const name = entries[i]?.name || "";
+        try {
+          const u = new URL(name, location.origin);
+          const ref = getTableauRefFromPath(u.pathname);
+          if (ref) return ref;
+        } catch {}
+      }
+    } catch {}
+    return null;
+  }
+
+  function ensureCurrentTableauRef() {
+    if (currentTableauRef?.self) return currentTableauRef;
+
+    const perfRef = findTableauRefFromPerformance();
+    if (perfRef) {
+      currentTableauRef = perfRef;
+      log("Recovered active tableau from Performance API:", perfRef);
+      return perfRef;
+    }
+
+    return null;
+  }
+
+  async function fetchMaybeJson(url, init = {}) {
+    const method = String(init.method || "GET").toUpperCase();
+
+    const headers = {
+      Accept: "application/json, text/plain, */*",
+      ...(init.headers || {})
+    };
+
+    if (method === "PUT") {
+      headers["Content-Type"] = "application/vnd.autodesk.plm.meta+json";
+      headers["x-tenant"] = getTenantFromHost();
+    }
+
     const res = await fetch(url, {
       credentials: "same-origin",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "X-Requested-With": "XMLHttpRequest",
-        ...(init.headers || {})
-      },
-      ...init
+      ...init,
+      headers
     });
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`${res.status} ${res.statusText}${text ? ` - ${text}` : ""}`);
+      throw new Error(`${res.status} - ${text || res.statusText}`);
     }
 
-    return res.json();
+    if (res.status === 204) return null;
+
+    const text = await res.text().catch(() => "");
+    if (!text) return null;
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
   }
 
   async function fetchMetaFields(workspaceId) {
@@ -112,7 +190,7 @@
       return deepClone(metaFieldsCache.get(workspaceId));
     }
 
-    const data = await fetchJson(`/api/v3/workspaces/${workspaceId}/tableaus`, {
+    const data = await fetchMaybeJson(`/api/v3/workspaces/${workspaceId}/tableaus`, {
       headers: {
         Accept: "application/vnd.autodesk.plm.meta+json"
       }
@@ -127,10 +205,30 @@
   }
 
   async function fetchCurrentTableauResult() {
-    if (!currentTableauRef?.self) {
+    const ref = ensureCurrentTableauRef();
+    if (!ref?.self) {
       throw new Error("Could not determine active tableau id. Reload the page and try again.");
     }
-    return await fetchJson(currentTableauRef.self);
+    return await fetchMaybeJson(ref.self);
+  }
+
+  async function fetchTableauDefinition() {
+    const ref = ensureCurrentTableauRef();
+    if (!ref?.self) {
+      throw new Error("Could not determine active tableau id. Reload the page and try again.");
+    }
+
+    const data = await fetchMaybeJson(ref.self, {
+      headers: {
+        Accept: "application/vnd.autodesk.plm.meta+json"
+      }
+    });
+
+    if (!data || typeof data !== "object" || !Array.isArray(data.columns)) {
+      throw new Error("Could not fetch editable tableau definition");
+    }
+
+    return data;
   }
 
   function hookNetwork() {
@@ -179,6 +277,8 @@
         const method = String(this.__aw_vcs_method || "GET").toUpperCase();
         const u = new URL(this.__aw_vcs_url, location.origin);
         const ref = getTableauRefFromPath(u.pathname);
+        if (ref && !currentTableauRef) currentTableauRef = ref;
+
         if (method === "PUT" && ref && typeof body === "string") {
           const bodyObj = safeJsonParse(body);
           if (bodyObj?.columns?.length) {
@@ -201,23 +301,29 @@
     style.textContent = `
       .ht_clone_top.handsontable {
         height: 72px !important;
+        z-index: 3 !important;
       }
+
       .ht_clone_top.handsontable .wtHolder {
         height: 72px !important;
       }
+
       .ht_clone_top.handsontable .wtHider {
         height: auto !important;
       }
+
       .ht_clone_top.handsontable thead tr,
       .ht_clone_top.handsontable thead th {
         height: 72px !important;
         vertical-align: top !important;
       }
+
       .ht_clone_top.handsontable thead th > div,
       .ht_clone_top.handsontable .relative,
       .ht_clone_top.handsontable .header-title {
         overflow: visible !important;
       }
+
       .ht_clone_top.handsontable .relative {
         display: flex !important;
         flex-direction: column !important;
@@ -226,6 +332,20 @@
         min-height: 64px !important;
         padding-bottom: 4px !important;
       }
+
+      .ht_master .wtHolder {
+        margin-top: 36px !important;
+      }
+
+      .ht_clone_left .wtHolder {
+        margin-top: 36px !important;
+      }
+
+      .ht_master .wtHider,
+      .ht_clone_left .wtHider {
+        padding-top: 0 !important;
+      }
+
       .${SEARCH_ROW_CLASS} {
         display: flex;
         align-items: center;
@@ -233,6 +353,7 @@
         margin-top: 4px;
         width: 100%;
       }
+
       .${HEADER_INPUT_CLASS} {
         flex: 1 1 auto;
         min-width: 50px;
@@ -248,10 +369,12 @@
         color: #222;
         box-sizing: border-box;
       }
+
       .${HEADER_INPUT_CLASS}:focus {
         border-color: #ff8000;
         box-shadow: 0 0 0 2px rgba(255,128,0,.12);
       }
+
       .${HEADER_BTN_CLASS},
       .aw-vcs-clear {
         height: 22px;
@@ -265,11 +388,13 @@
         padding: 0 5px;
         box-sizing: border-box;
       }
+
       .${HEADER_BTN_CLASS}:hover,
       .aw-vcs-clear:hover {
         border-color: #ff8000;
         color: #ff8000;
       }
+
       .aw-vcs-busy {
         opacity: 0.65;
         pointer-events: none;
@@ -348,61 +473,91 @@
     };
   }
 
-  function buildMinimalColumnsFromDom(metaFields, targetDomMeta = null, searchValue = "") {
-    const headerCells = getVisibleHeaderCells();
-    const columns = [];
+  function getGridSignature() {
+    const cells = Array.from(document.querySelectorAll(".ht_master tbody tr td"))
+      .slice(0, 12)
+      .map((td) => (td.textContent || "").trim())
+      .join("|");
+    return cells;
+  }
 
-    headerCells.forEach(({ meta }, idx) => {
-      const metaField = findMetaField(metaFields, meta);
-      if (!metaField) return;
+  function triggerFusionRefreshSignals() {
+    try { window.dispatchEvent(new Event("resize")); } catch {}
+    try { window.dispatchEvent(new PopStateEvent("popstate")); } catch {}
+    try { document.dispatchEvent(new Event("visibilitychange")); } catch {}
+    try { document.dispatchEvent(new CustomEvent("aw:view-column-search-refresh")); } catch {}
+  }
 
-      const col = {
-        field: deepClone(metaField.field),
-        group: deepClone(metaField.group),
-        allowMultipleFilters: !!metaField.allowMultipleFilters,
-        displayOrder: idx,
-        applicableFilters: deepClone(metaField.applicableFilters || [])
-      };
+  async function refreshGridInPlace() {
+    const before = getGridSignature();
+    lastKnownGridSignature = before;
 
-      if (
-        targetDomMeta &&
-        searchValue &&
-        normalizeUrn(metaField?.field?.urn) === normalizeUrn(findMetaField(metaFields, targetDomMeta)?.field?.urn)
-      ) {
-        const contains = getContainsFilterDef(metaField);
-        if (contains) {
-          col.appliedFilters = buildAppliedFilters(contains, searchValue);
-        }
+    const current = new URL(location.href);
+    const originalHref = current.toString();
+
+    current.searchParams.set("_awvcs", String(Date.now()));
+    const nudgedHref = current.toString();
+
+    try {
+      history.replaceState(history.state, "", nudgedHref);
+      triggerFusionRefreshSignals();
+
+      await new Promise((r) => setTimeout(r, 120));
+
+      history.replaceState(history.state, "", originalHref);
+      triggerFusionRefreshSignals();
+
+      await new Promise((r) => setTimeout(r, 300));
+
+      const after = getGridSignature();
+      if (after && before && after !== before) {
+        log("Grid refreshed in place.");
+        return true;
       }
+    } catch (e) {
+      warn("Soft refresh failed", e);
+    }
 
-      columns.push(col);
-    });
-
-    return columns;
+    return false;
   }
 
   async function buildBaselinePayload(metaFields) {
+    try {
+      const definition = await fetchTableauDefinition();
+      if (definition?.columns?.length) {
+        return deepClone(definition);
+      }
+    } catch (e) {
+      warn("Definition GET failed, falling back:", e);
+    }
+
     const result = await fetchCurrentTableauResult();
 
     if (latestKnownPutPayload?.columns?.length) {
       const payload = deepClone(latestKnownPutPayload);
       payload.__self__ = currentTableauRef.self;
-      if (!payload.urn && result.urn) payload.urn = result.urn;
-      if (!payload.name && result.name) payload.name = result.name;
+      if (!payload.urn && result?.urn) payload.urn = result.urn;
+      if (!payload.name && result?.name) payload.name = result.name;
       return payload;
     }
 
     return {
       __self__: currentTableauRef.self,
-      urn: result.urn,
-      name: result.name || "Quick Search View",
-      columns: buildMinimalColumnsFromDom(metaFields)
+      urn: result?.urn,
+      name: result?.name || "Quick Search View",
+      description: "",
+      columns: []
     };
   }
 
   async function applyColumnSearch(domMeta, searchValue) {
     const value = String(searchValue || "").trim();
     if (!value) return;
+
+    const ref = ensureCurrentTableauRef();
+    if (!ref?.self) {
+      throw new Error("Could not determine active tableau id. Reload the page and try again.");
+    }
 
     const workspaceId = getWorkspaceIdFromUrl();
     const metaFields = await fetchMetaFields(workspaceId);
@@ -417,18 +572,14 @@
       throw new Error(`Column "${targetMetaField?.field?.title}" does not support Contains filter`);
     }
 
-    if (!currentTableauRef?.self) {
-      await fetchCurrentTableauResult();
-    }
-
     const baseline = await buildBaselinePayload(metaFields);
-
     const storageKey = makeStorageKey(currentTableauRef.workspaceId, currentTableauRef.tableauId);
+
     if (!sessionStorage.getItem(storageKey)) {
       sessionStorage.setItem(storageKey, JSON.stringify(deepClone(baseline)));
     }
 
-    let payload = deepClone(baseline);
+    const payload = deepClone(baseline);
 
     if (Array.isArray(payload.columns) && payload.columns.length) {
       let matched = false;
@@ -437,10 +588,10 @@
         const same =
           normalizeUrn(col?.field?.urn) === normalizeUrn(targetMetaField?.field?.urn) ||
           String(col?.field?.id || "").trim().toUpperCase() === domMeta.lastToken ||
-          String(col?.field?.title || "").trim().toLowerCase() === String(targetMetaField?.field?.title || "").trim().toLowerCase();
+          String(col?.field?.title || "").trim().toLowerCase() ===
+            String(targetMetaField?.field?.title || "").trim().toLowerCase();
 
         if (!same) return col;
-
         matched = true;
         return {
           ...col,
@@ -458,21 +609,27 @@
           appliedFilters: buildAppliedFilters(contains, value)
         });
       }
-    } else {
-      payload.columns = buildMinimalColumnsFromDom(metaFields, domMeta, value);
     }
 
-    await fetchJson(currentTableauRef.self, {
+    await fetchMaybeJson(currentTableauRef.self, {
       method: "PUT",
       body: JSON.stringify(payload)
     });
 
     latestKnownPutPayload = deepClone(payload);
     log("Applied quick search", targetMetaField?.field?.title, value);
+
+    const refreshed = await refreshGridInPlace();
+    if (!refreshed) {
+      setTimeout(() => {
+        window.location.reload();
+      }, 80);
+    }
   }
 
-  async function restoreOriginalFiltersIfNeeded() {
-    const keys = Object.keys(sessionStorage).filter((k) => k.startsWith(SESSION_PREFIX));
+  async function restoreOriginalFiltersIfNeeded(opts = {}) {
+    const { keepalive = false } = opts;
+    const keys = getStoredBaselineKeys();
     if (!keys.length) return;
 
     for (const key of keys) {
@@ -483,10 +640,25 @@
       }
 
       try {
-        await fetchJson(payload.__self, {
-          method: "PUT",
-          body: JSON.stringify(payload)
-        });
+        if (keepalive) {
+          fetch(payload.__self, {
+            method: "PUT",
+            credentials: "same-origin",
+            keepalive: true,
+            headers: {
+              Accept: "application/json, text/plain, */*",
+              "Content-Type": "application/vnd.autodesk.plm.meta+json",
+              "x-tenant": getTenantFromHost()
+            },
+            body: JSON.stringify(payload)
+          }).catch(() => {});
+        } else {
+          await fetchMaybeJson(payload.__self, {
+            method: "PUT",
+            body: JSON.stringify(payload)
+          });
+        }
+
         latestKnownPutPayload = deepClone(payload);
       } catch (e) {
         warn("Could not restore original tableau payload", e);
@@ -494,6 +666,84 @@
         sessionStorage.removeItem(key);
       }
     }
+  }
+
+  async function restoreThenNavigate(href) {
+    if (isRestoringBeforeNav) return;
+    isRestoringBeforeNav = true;
+
+    try {
+      await restoreOriginalFiltersIfNeeded();
+    } catch {}
+    window.location.href = href;
+  }
+
+  function patchNavigationReset() {
+    if (navPatched) return;
+    navPatched = true;
+
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+
+    history.pushState = function(state, title, url) {
+      try {
+        const nextUrl = url ? new URL(String(url), location.origin).toString() : location.href;
+        if (hasStoredBaseline() && !isWorkspaceListPage(nextUrl)) {
+          restoreOriginalFiltersIfNeeded({ keepalive: true });
+        }
+      } catch {}
+      return originalPushState.apply(this, arguments);
+    };
+
+    history.replaceState = function(state, title, url) {
+      try {
+        const nextUrl = url ? new URL(String(url), location.origin).toString() : location.href;
+        if (hasStoredBaseline() && !isWorkspaceListPage(nextUrl)) {
+          restoreOriginalFiltersIfNeeded({ keepalive: true });
+        }
+      } catch {}
+      return originalReplaceState.apply(this, arguments);
+    };
+
+    document.addEventListener(
+      "click",
+      (e) => {
+        if (!hasStoredBaseline()) return;
+
+        const anchor = e.target.closest("a[href]");
+        if (anchor) {
+          const href = anchor.href || anchor.getAttribute("href") || "";
+          if (!href) return;
+
+          if (!isWorkspaceListPage(href)) {
+            e.preventDefault();
+            e.stopPropagation();
+            restoreThenNavigate(href);
+          }
+          return;
+        }
+
+        const row = e.target.closest(".ht_master tbody tr, .ht_master tbody td");
+        if (row) {
+          setTimeout(() => {
+            restoreOriginalFiltersIfNeeded({ keepalive: true });
+          }, 0);
+        }
+      },
+      true
+    );
+
+    window.addEventListener("pagehide", () => {
+      if (hasStoredBaseline()) {
+        restoreOriginalFiltersIfNeeded({ keepalive: true });
+      }
+    });
+
+    window.addEventListener("beforeunload", () => {
+      if (hasStoredBaseline()) {
+        restoreOriginalFiltersIfNeeded({ keepalive: true });
+      }
+    });
   }
 
   function buildSearchRow(domMeta) {
@@ -537,6 +787,12 @@
       row.classList.add("aw-vcs-busy");
       try {
         await restoreOriginalFiltersIfNeeded();
+        const refreshed = await refreshGridInPlace();
+        if (!refreshed) {
+          setTimeout(() => {
+            window.location.reload();
+          }, 80);
+        }
       } finally {
         row.classList.remove("aw-vcs-busy");
       }
@@ -588,6 +844,8 @@
     }
 
     if (!isWorkspacePage() || isItemPage()) return;
+
+    ensureCurrentTableauRef();
     injectSearchInputs();
   }
 
@@ -597,12 +855,14 @@
     injectTick = setInterval(async () => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
-        if (isItemPage()) {
-          await restoreOriginalFiltersIfNeeded();
+
+        if (!isWorkspaceListPage(location.href) && hasStoredBaseline()) {
+          restoreOriginalFiltersIfNeeded({ keepalive: true });
         }
       }
+
       refreshUiState();
-    }, 900);
+    }, 700);
   }
 
   function startObserver() {
@@ -620,6 +880,8 @@
 
   function start() {
     hookNetwork();
+    ensureCurrentTableauRef();
+    patchNavigationReset();
     startObserver();
     startTimers();
     refreshUiState();

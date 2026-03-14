@@ -1,11 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Fusion Manage – Second Tabs",
-  "version": "1.4.2",
-  "description": "Adds toggleable Fusion Manage enhancements like second tabs, action buttons, on-edit runners, workspace colors, custom logo override and column quick search for views.",
+  "version": "1.5.1",
+  "description": "Adds Fusion Manage enhancements including a Search view overlay.",
   "icons": {
     "16": "icons/icon16.png",
-    "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
@@ -15,31 +14,36 @@
   "content_scripts": [
     {
       "matches": ["https://*.autodeskplm360.net/plm/workspaces/*/items/*"],
-      "js": ["aw-settings.js", "content.js"],
+      "js": ["content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
     },
     {
       "matches": ["https://*.autodeskplm360.net/plm/workspaces/*/items/*"],
-      "js": ["aw-settings.js", "action-tabs.js", "action-onedit-runner.js"],
+      "js": ["action-tabs.js", "action-onedit-runner.js"],
       "css": ["action-tabs.css"],
       "run_at": "document_idle",
       "all_frames": true
     },
     {
       "matches": ["https://*.autodeskplm360.net/plm/workspaces/*/items/*"],
-      "js": ["aw-settings.js", "header-color.js"],
+      "js": ["header-color.js"],
       "run_at": "document_idle"
     },
     {
       "matches": ["https://*.autodeskplm360.net/*"],
-      "js": ["aw-settings.js", "logo-override.js"],
+      "js": ["logo-override.js"],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://*.autodeskplm360.net/plm/workspaces/*"],
-      "js": ["aw-settings.js", "view-column-search.js"],
-      "run_at": "document_start"
+      "matches": ["https://*.autodeskplm360.net/plm/workspaces/*/items"],
+      "js": ["search-panel.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.autodeskplm360.net/*"],
+      "js": ["required-fields.js"],
+      "run_at": "document_idle"
     }
   ]
 }
