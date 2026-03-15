@@ -1,72 +1,169 @@
-# README
+# Fusion Manage – Second Tabs (Chrome Extension)
 
-## ✨ Features
+This extension adds productivity features to **Autodesk Fusion Manage** (`*.autodeskplm360.net`) such as second tabs, script action buttons, on-edit automation, workspace color themes, search overlay, required-field highlighting, and optional logo override.
 
-### 1) Add extra action buttons (or edit hooks) to specific tabs
+---
 
-To enable additional actions for a tab, open the **Script Description** and add a config block like:
+## How it works
+
+The extension injects content scripts on Fusion Manage pages and reads settings from `chrome.storage.sync`.
+
+- **Global feature toggles** are controlled from the extension **Options** page.
+- **Item-level behavior** (action buttons and on-edit hooks) is controlled by metadata placed in Fusion script display names/descriptions.
+- **Workspace-level behavior** (header colors) is controlled by metadata placed in workspace descriptions.
+
+---
+
+## All settings (Options page)
+
+Open settings via:
+- `chrome://extensions` → find **Fusion Manage – Second Tabs** → **Details** → **Extension options**
+- or right-click extension icon (if pinned) → **Options**
+
+### 1) Second Tabs (`secondTabs`)
+- **Default:** `ON`
+- **What it does:** Renders a second row of tabs under native item tabs and loads configured URLs in an iframe.
+
+### 2) Search Overlay (`searchOverlay`)
+- **Default:** `ON`
+- **What it does:** On workspace item-list pages (`/plm/workspaces/{id}/items`), finds a view/tableau containing “Search” in the name and opens a searchable overlay grid.
+
+### 3) Action Buttons (`actionButtons`)
+- **Default:** `ON`
+- **What it does:** Adds script-driven buttons to supported item tabs when a script contains `mode: button` metadata.
+
+### 4) On-Edit Runner (`onEditRunner`)
+- **Default:** `ON`
+- **What it does:** Runs scripts tagged `mode: onEdit`:
+  - when URL transitions from `mode=edit` to `mode=view` on same tab
+  - after successful writes to BOM and attachment APIs
+
+### 5) Workspace Header Colors (`workspaceColors`)
+- **Default:** `ON`
+- **What it does:** Reads `{color: #RRGGBB}` from workspace description and applies themed CSS variables to headers and related UI colors.
+
+### 6) Custom Logo Image URL (`customLogoUrl`)
+- **Default:** empty
+- **What it does:** Replaces Fusion logo image when a valid `http/https` URL is provided.
+
+### 7) Custom Logo Click URL (`customLogoClickUrl`)
+- **Default:** empty
+- **What it does:** Optional custom destination when users click the logo.
+- If empty/invalid, default Fusion behavior remains.
+
+> Notes:
+> - Settings are saved automatically as you toggle/type.
+> - If a change does not apply immediately, refresh Fusion Manage.
+
+---
+
+## Script metadata configuration (Action Buttons / On-Edit)
+
+To enable tab-specific script behavior, add metadata in the script display name/description using this format:
 
 ```txt
 {tab: TAB_NAME, mode: MODE_TYPE}
 ```
 
-#### Supported tabs (`TAB_NAME`)
+### Supported `tab` values
 - `itemDetails`
 - `grid`
 - `bom`
 - `attachments`
 - `project-management`
+- `workflowMap` (URL token support)
 
-#### Supported modes (`MODE_TYPE`)
+### Supported `mode` values
 - `button`
 - `onEdit`
 
----
-
-#### ✅ Mode: `button`
-
-If you use `button`, you can also define a button color and label:
+### Button mode options
+When `mode: button` is used, optional bracket settings are supported:
 
 ```txt
-[color: COLORHEX, name: BUTTON_NAME]
+[color: #FF8000, name: Create Tasks]
 ```
 
-**Example**
+Full example:
+
 ```txt
 {tab: grid, mode: button[color: #FF8000, name: Create Tasks]}
 ```
 
----
+### On-edit mode example
 
-#### ✅ Mode: `onEdit`
-
-Runs an additional action **after saving** (after grid `addRow` or `edit`).
-
-**Example**
 ```txt
 {tab: grid, mode: onEdit}
 ```
 
-> **Note:** `onEdit` currently only works for **grid tabs**, and it triggers **after save**.
-
-<img width="875" height="139" alt="bilde" src="https://github.com/user-attachments/assets/e023881c-37c3-4dc4-a616-65d1a20d3562" />
-
 ---
 
-### 2) Change workspace header colors
+## Workspace color configuration
 
-To set a custom header color for a workspace:
+In **Workspace Settings → Workspace Description**, include:
 
-1. Open **Workspace Settings**
-2. Edit the **Workspace Description**
-3. Add:
-
-```txt
-{color: COLORHEX}
-```
-
-**Example**
 ```txt
 {color: #06402B}
 ```
-<img width="631" height="134" alt="bilde" src="https://github.com/user-attachments/assets/3726b3e6-ac84-44df-b4b0-da5a1a61ebc5" />
+
+The extension detects the hex color and applies derived theme shades automatically.
+
+---
+
+## Additional built-in behavior
+
+- **Required fields helper:** Empty required fields are visually highlighted on item detail forms.
+- **Logo override safety:** If logo URL is empty/invalid, original logo/link is restored.
+
+---
+
+## Download / install locally in Chrome (developer mode)
+
+### Option A: Load unpacked (recommended for development)
+1. Download this repository as ZIP and extract it, or clone it.
+2. Open Chrome and go to `chrome://extensions`.
+3. Enable **Developer mode** (top-right).
+4. Click **Load unpacked**.
+5. Select the project folder containing `manifest.json`.
+6. Open/reload Fusion Manage.
+
+### Option B: Create a `.crx` package (manual distribution)
+1. Go to `chrome://extensions`.
+2. Enable **Developer mode**.
+3. Click **Pack extension**.
+4. Extension root directory: select this project folder.
+5. (Optional) Provide a private key to keep extension ID stable across builds.
+6. Chrome outputs a `.crx` and `.pem`.
+
+---
+
+## Upload to Chrome Web Store
+
+1. Prepare a clean release build of the extension folder.
+2. Zip extension contents (the folder with `manifest.json` at root).
+3. Open the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole).
+4. Create a new item and upload the ZIP.
+5. Fill listing details, screenshots, privacy/compliance, and permissions justification.
+6. Submit for review and publish.
+
+> Tip: Keep version in `manifest.json` updated for each new upload.
+
+---
+
+## Host permissions and scope
+
+The extension runs on:
+- `https://*.autodeskplm360.net/*`
+
+Core item scripts target:
+- `https://*.autodeskplm360.net/plm/workspaces/*/items/*`
+
+---
+
+## Troubleshooting
+
+- **No visible change:** Ensure feature toggle is enabled in Options and refresh page.
+- **Buttons not showing:** Confirm script metadata contains valid `{tab: ..., mode: button...}`.
+- **On-edit not firing:** Verify `mode: onEdit` and supported tab/write flow.
+- **Logo not replaced:** Ensure `customLogoUrl` is a valid public `http/https` image URL.
+- **Search overlay not available:** Ensure current page is a workspace item list page and a “Search” view exists.
