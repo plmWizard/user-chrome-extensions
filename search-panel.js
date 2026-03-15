@@ -17,6 +17,13 @@
     console.log(MOD, ...args);
   }
 
+  async function isEnabled() {
+    if (typeof window.__AW_GET_SETTING__ === "function") {
+      return !!(await window.__AW_GET_SETTING__("searchOverlay"));
+    }
+    return true;
+  }
+
   function isWorkspaceItemsPage(url = location.href) {
     try {
       const u = new URL(url, location.origin);
@@ -644,8 +651,9 @@
     }
   }
 
-  function evaluatePageState() {
-    if (!isWorkspaceItemsPage()) {
+  async function evaluatePageState() {
+    const enabled = await isEnabled();
+    if (!enabled || !isWorkspaceItemsPage()) {
       removeFab();
       removePanel();
       return;
@@ -673,6 +681,14 @@
       }
       evaluatePageState();
     }, 700);
+
+    if (typeof window.__AW_ON_SETTINGS_CHANGED__ === "function") {
+      window.__AW_ON_SETTINGS_CHANGED__((changes) => {
+        if (changes.searchOverlay) {
+          evaluatePageState();
+        }
+      });
+    }
 
     log("initialized");
   }
