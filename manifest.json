@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Fusion Manage – Second Tabs",
+  "name": "Fusion Manage \u2013 Second Tabs",
   "version": "1.5.1",
   "description": "Adds Fusion Manage enhancements including a Search view overlay.",
   "icons": {
@@ -8,41 +8,84 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["storage"],
-  "host_permissions": ["https://*.autodeskplm360.net/*"],
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.autodeskplm360.net/*"
+  ],
   "options_page": "options.html",
   "content_scripts": [
     {
-      "matches": ["https://*.autodeskplm360.net/plm/workspaces/*/items/*"],
-      "js": ["content.js"],
-      "css": ["content.css"],
+      "matches": [
+        "https://*.autodeskplm360.net/*"
+      ],
+      "js": [
+        "aw-settings.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://*.autodeskplm360.net/plm/workspaces/*/items/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://*.autodeskplm360.net/plm/workspaces/*/items/*"],
-      "js": ["action-tabs.js", "action-onedit-runner.js"],
-      "css": ["action-tabs.css"],
+      "matches": [
+        "https://*.autodeskplm360.net/plm/workspaces/*/items/*"
+      ],
+      "js": [
+        "action-tabs.js",
+        "action-onedit-runner.js"
+      ],
+      "css": [
+        "action-tabs.css"
+      ],
       "run_at": "document_idle",
       "all_frames": true
     },
     {
-      "matches": ["https://*.autodeskplm360.net/plm/workspaces/*/items/*"],
-      "js": ["header-color.js"],
+      "matches": [
+        "https://*.autodeskplm360.net/plm/workspaces/*/items/*"
+      ],
+      "js": [
+        "header-color.js"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://*.autodeskplm360.net/*"],
-      "js": ["logo-override.js"],
+      "matches": [
+        "https://*.autodeskplm360.net/*"
+      ],
+      "js": [
+        "logo-override.js"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://*.autodeskplm360.net/plm/workspaces/*/items"],
-      "js": ["search-panel.js"],
+      "matches": [
+        "https://*.autodeskplm360.net/plm/workspaces/*/items"
+      ],
+      "js": [
+        "search-panel.js"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://*.autodeskplm360.net/*"],
-      "js": ["required-fields.js"],
+      "matches": [
+        "https://*.autodeskplm360.net/*"
+      ],
+      "js": [
+        "required-fields.js"
+      ],
       "run_at": "document_idle"
     }
   ]
