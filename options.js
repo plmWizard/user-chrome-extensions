@@ -5,7 +5,9 @@ const DEFAULTS = {
   workspaceColors: true,
   customLogoUrl: "",
   customLogoClickUrl: "",
-  searchOverlay: true
+  searchOverlay: true,
+  itemContextBadge: true,
+  scrollToTopButton: true
 };
 
 const ids = Object.keys(DEFAULTS);

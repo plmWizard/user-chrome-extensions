@@ -6,7 +6,9 @@
     workspaceColors: true,
     customLogoUrl: "",
     customLogoClickUrl: "",
-    searchOverlay: true
+    searchOverlay: true,
+    itemContextBadge: true,
+    scrollToTopButton: true
   };
 
   if (window.__AW_SETTINGS_READY__) return;

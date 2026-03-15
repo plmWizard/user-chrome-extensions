@@ -1,6 +1,6 @@
 # Fusion Manage – Second Tabs (Chrome Extension)
 
-This extension adds productivity features to **Autodesk Fusion Manage** (`*.autodeskplm360.net`) such as second tabs, script action buttons, on-edit automation, workspace color themes, search overlay, required-field highlighting, and optional logo override.
+This extension adds productivity features to **Autodesk Fusion Manage** (`*.autodeskplm360.net`) such as second tabs, script action buttons, on-edit automation, workspace color themes, search overlay, required-field highlighting, item context badge, scroll-to-top quick button, and optional logo override.
 
 ---
 
@@ -50,6 +50,14 @@ Open settings via:
 - **Default:** empty
 - **What it does:** Optional custom destination when users click the logo.
 - If empty/invalid, default Fusion behavior remains.
+
+### 8) Item Context Badge (`itemContextBadge`)
+- **Default:** `ON`
+- **What it does:** On item pages, shows a compact floating badge with workspace/item IDs and a one-click copy action.
+
+### 9) Scroll To Top Button (`scrollToTopButton`)
+- **Default:** `ON`
+- **What it does:** Shows a floating button on long pages so users can quickly jump back to the top.
 
 > Notes:
 > - Settings are saved automatically as you toggle/type.
