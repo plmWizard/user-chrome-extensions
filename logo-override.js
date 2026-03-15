@@ -1,7 +1,17 @@
 (() => {
   const MOD = "[AW Logo Override]";
-  const IMG_SELECTOR = ".brand-logo img.manage-360-branding";
-  const LINK_SELECTOR = ".brand-logo a[href='mainDashboard'], .brand-logo a";
+  const IMG_SELECTORS = [
+    ".brand-logo img.manage-360-branding",
+    ".brand-logo img",
+    "a.brand-logo img",
+    "img.manage-360-branding",
+    "header img[alt*='logo' i]"
+  ];
+  const LINK_SELECTORS = [
+    ".brand-logo a[href='mainDashboard']",
+    ".brand-logo a",
+    "a.brand-logo"
+  ];
 
   let lastAppliedLogoUrl = null;
   let lastAppliedClickUrl = null;
@@ -29,11 +39,19 @@
   }
 
   function getLogoImg() {
-    return document.querySelector(IMG_SELECTOR);
+    for (const selector of IMG_SELECTORS) {
+      const img = document.querySelector(selector);
+      if (img) return img;
+    }
+    return null;
   }
 
   function getLogoLink() {
-    return document.querySelector(LINK_SELECTOR);
+    for (const selector of LINK_SELECTORS) {
+      const link = document.querySelector(selector);
+      if (link) return link;
+    }
+    return null;
   }
 
   function cleanupIfNeeded() {
@@ -42,6 +60,11 @@
 
     if (img && img.dataset.awOriginalSrc && img.dataset.awLogoOverridden === "1") {
       img.src = img.dataset.awOriginalSrc;
+      if (img.dataset.awOriginalSrcset !== undefined) {
+        img.setAttribute("srcset", img.dataset.awOriginalSrcset || "");
+      } else {
+        img.removeAttribute("srcset");
+      }
       img.style.removeProperty("max-height");
       img.style.removeProperty("height");
       img.style.removeProperty("width");
@@ -68,6 +91,7 @@
 
     if (!img.dataset.awOriginalSrc) {
       img.dataset.awOriginalSrc = img.getAttribute("src") || "";
+      img.dataset.awOriginalSrcset = img.getAttribute("srcset") || "";
     }
 
     if (link && !link.dataset.awOriginalHref) {
@@ -76,6 +100,7 @@
 
     if (logoUrl && img.src !== logoUrl) {
       img.src = logoUrl;
+      img.setAttribute("srcset", logoUrl);
       img.dataset.awLogoOverridden = "1";
 
       img.style.maxHeight = "32px";

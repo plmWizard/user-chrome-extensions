@@ -422,9 +422,39 @@
       .slice()
       .sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0))
       .map((col) => ({
-        id: col?.field?.id || "",
-        title: col?.field?.title || col?.field?.id || "Column"
+        id: String(col?.field?.id || col?.fieldId || col?.id || "").trim(),
+        title: col?.field?.title || col?.title || col?.field?.id || col?.fieldId || "Column",
+        keyCandidates: [
+          col?.field?.id,
+          col?.fieldId,
+          col?.id,
+          col?.field?.__self__,
+          col?.field?.link,
+          col?.field?.title,
+          col?.title
+        ]
+          .map((v) => String(v || "").trim())
+          .filter(Boolean),
+        isPrimary:
+          String(col?.field?.id || col?.fieldId || col?.id || "").toUpperCase() === "DESCRIPTOR" ||
+          /item\s*descriptor/i.test(String(col?.field?.title || col?.title || ""))
       }));
+  }
+
+  function normalizeFieldValue(value) {
+    if (value == null) return "";
+    if (Array.isArray(value)) {
+      return value.map((v) => normalizeFieldValue(v)).filter(Boolean).join(", ");
+    }
+    if (typeof value === "object") {
+      if ("title" in value && value.title != null) return stripHtml(value.title);
+      if ("name" in value && value.name != null) return stripHtml(value.name);
+      if ("value" in value && value.value != null && value.value !== value) {
+        return normalizeFieldValue(value.value);
+      }
+      return stripHtml(JSON.stringify(value));
+    }
+    return stripHtml(value);
   }
 
   function normalizeRows(rawItems, workspaceId) {
@@ -437,7 +467,21 @@
 
       const byId = {};
       for (const f of fields) {
-        byId[f?.id || ""] = stripHtml(f?.value ?? "");
+        const normalized = normalizeFieldValue(f?.value);
+        const keys = [
+          f?.id,
+          f?.fieldId,
+          f?.field?.id,
+          f?.field?.title,
+          String(f?.field?.__self__ || "").split("/").pop(),
+          String(f?.field?.link || "").split("/").pop()
+        ]
+          .map((v) => String(v || "").trim())
+          .filter(Boolean);
+
+        for (const key of keys) {
+          byId[key] = normalized;
+        }
       }
 
       return {
@@ -519,6 +563,21 @@
 
     const tbody = document.createElement("tbody");
 
+
+    function getCellValue(row, col) {
+      const keys = [col.id, ...(Array.isArray(col.keyCandidates) ? col.keyCandidates : [])]
+        .map((v) => String(v || "").trim())
+        .filter(Boolean);
+
+      for (const key of keys) {
+        if (Object.prototype.hasOwnProperty.call(row.byId, key) && row.byId[key]) {
+          return row.byId[key];
+        }
+      }
+
+      return "";
+    }
+
     function buildRows(nextRows) {
       tbody.innerHTML = "";
 
@@ -538,8 +597,8 @@
         tr.dataset.itemUrl = row.itemDetailsUrl;
 
         for (const col of columns) {
-          const value = row.byId[col.id] || "";
-          const td = createTextCell(value, col.id === "DESCRIPTOR");
+          const value = getCellValue(row, col);
+          const td = createTextCell(value, !!col.isPrimary);
           tr.appendChild(td);
         }
 
@@ -570,7 +629,10 @@
       if (!keys.length) return rows;
 
       return rows.filter((row) =>
-        keys.every((key) => String(row.byId[key] || "").toLowerCase().includes(filters[key]))
+        keys.every((key) => {
+          const col = columns.find((c) => c.id === key) || { id: key, keyCandidates: [key] };
+          return String(getCellValue(row, col) || "").toLowerCase().includes(filters[key]);
+        })
       );
     }
 
