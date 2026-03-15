@@ -87,6 +87,24 @@
         "required-fields.js"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.autodeskplm360.net/plm/workspaces/*/items/*"
+      ],
+      "js": [
+        "item-context-badge.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.autodeskplm360.net/*"
+      ],
+      "js": [
+        "scroll-to-top.js"
+      ],
+      "run_at": "document_idle"
     }
   ]
 }

@@ -15,18 +15,29 @@
   }
 
   function getWsAndDmsFromUrl() {
-    const parts = location.pathname.split("/").filter(Boolean);
-    const wsIndex = parts.indexOf("workspaces");
-    const wsId = wsIndex >= 0 ? parts[wsIndex + 1] : null;
+    const href = location.href;
+    const wsMatch = href.match(/\/plm\/workspaces\/(\d+)\/items\//i);
+    const wsId = wsMatch ? wsMatch[1] : null;
 
     const params = new URLSearchParams(location.search);
     const rawItemId = params.get("itemId");
     let dmsId = null;
+
     if (rawItemId) {
-      const decoded = decodeURIComponent(rawItemId);
-      const m = decoded.match(/[,`](\d+),(\d+)\s*$/);
-      if (m) dmsId = m[2];
+      try {
+        const decoded = decodeURIComponent(rawItemId);
+        const m =
+          decoded.match(/[,`.](\d+)[,`.](\d+)\s*$/) ||
+          decoded.match(/(\d+)[,`.](\d+)\s*$/);
+        if (m) dmsId = m[2];
+      } catch {}
     }
+
+    if (!dmsId) {
+      const fallback = href.match(/\/items\/(\d+)(?:[/?#]|$)/i);
+      if (fallback) dmsId = fallback[1];
+    }
+
     return { wsId, dmsId };
   }
 

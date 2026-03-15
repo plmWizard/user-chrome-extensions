@@ -84,9 +84,16 @@
       img.style.objectFit = "contain";
     }
 
-    if (link && clickUrl) {
-      link.setAttribute("href", clickUrl);
-      link.dataset.awClickOverridden = "1";
+    if (link) {
+      if (clickUrl) {
+        link.setAttribute("href", clickUrl);
+        link.dataset.awClickOverridden = "1";
+      } else if (link.dataset.awOriginalHref) {
+        link.setAttribute("href", link.dataset.awOriginalHref);
+        link.removeAttribute("data-aw-click-overridden");
+        link.removeAttribute("target");
+        link.removeAttribute("rel");
+      }
     }
 
     lastAppliedLogoUrl = logoUrl || null;
