@@ -8,7 +8,8 @@
     customLogoClickUrl: "",
     searchOverlay: true,
     itemContextBadge: true,
-    scrollToTopButton: true
+    scrollToTopButton: true,
+    dmsBulkTools: true
   };
 
   if (window.__AW_SETTINGS_READY__) return;

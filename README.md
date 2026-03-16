@@ -59,6 +59,13 @@ Open settings via:
 - **Default:** `ON`
 - **What it does:** Shows a floating button on long pages so users can quickly jump back to the top.
 
+### 10) DMS Bulk Copy/Add Tools (`dmsBulkTools`)
+- **Default:** `ON`
+- **What it does:**
+  - On workspace item-list pages (`/plm/workspaces/{id}/items`), shows a floating panel where you can select multiple detected rows and copy their dmsIDs.
+  - On BOM nested tab pages (`/items/bom/nested?view=full&tab=bom...`), lets you paste/load copied dmsIDs and add them to BOM with API calls.
+  - On affected items pages (`/items/affectedItems?...`), lets you paste/load copied dmsIDs and add them as affected workflow items.
+
 > Notes:
 > - Settings are saved automatically as you toggle/type.
 > - If a change does not apply immediately, refresh Fusion Manage.

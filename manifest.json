@@ -105,6 +105,15 @@
         "scroll-to-top.js"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.autodeskplm360.net/plm/workspaces/*/items*"
+      ],
+      "js": [
+        "bulk-dms-tools.js"
+      ],
+      "run_at": "document_idle"
     }
   ]
 }
