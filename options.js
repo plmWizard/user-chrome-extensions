@@ -7,7 +7,8 @@ const DEFAULTS = {
   customLogoClickUrl: "",
   searchOverlay: true,
   itemContextBadge: true,
-  scrollToTopButton: true
+  scrollToTopButton: true,
+  dmsBulkTools: true
 };
 
 const ids = Object.keys(DEFAULTS);
