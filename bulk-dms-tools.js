@@ -186,6 +186,55 @@
     throw lastErr || new Error("Unknown POST error");
   }
 
+  function getAffectedViewIdFromUrl() {
+    const params = new URLSearchParams(location.search);
+    const candidates = [
+      params.get("view"),
+      params.get("viewId"),
+      params.get("viewDefId")
+    ];
+    for (const c of candidates) {
+      if (/^\d+$/.test(String(c || ""))) return String(c);
+    }
+
+    const pathMatch = location.pathname.match(/\/views\/(\d+)(?:[/?#]|$)/i);
+    if (pathMatch) return pathMatch[1];
+    return null;
+  }
+
+  async function resolveAffectedUrls(wsId, itemId) {
+    const fallbackViewId = getAffectedViewIdFromUrl() || "11";
+    const urls = [
+      `/api/v3/workspaces/${wsId}/items/${itemId}/views/${fallbackViewId}/affected-items`,
+      `/api/v3/workspaces/${wsId}/items/${itemId}/affected-items`,
+      `/api/v1/rest/workspaces/${wsId}/items/${itemId}/workflow-items`,
+      `/api/rest/v1/workspaces/${wsId}/items/${itemId}/workflow-items`,
+      `/api/v3/workspaces/${wsId}/items/${itemId}/workflow-items`
+    ];
+
+    try {
+      const viewRes = await fetch(
+        `/api/v3/workspaces/${wsId}/items/${itemId}/views/${fallbackViewId}`,
+        {
+          method: "GET",
+          credentials: "same-origin",
+          headers: { Accept: "application/json" }
+        }
+      );
+      if (viewRes.ok) {
+        const view = await viewRes.json();
+        const self = view?.__self__;
+        if (typeof self === "string" && /\/views\/\d+$/i.test(self)) {
+          urls.unshift(`${self}/affected-items`);
+        }
+      }
+    } catch (e) {
+      console.warn("[AW bulk dms] Could not resolve affected view endpoint", e);
+    }
+
+    return Array.from(new Set(urls));
+  }
+
   async function addIdsToEndpoint(kind, wsId, itemId, ids, statusCb) {
     const urls = kind === "bom"
       ? [
@@ -193,11 +242,7 @@
           `/api/rest/v1/workspaces/${wsId}/items/${itemId}/boms`,
           `/api/v3/workspaces/${wsId}/items/${itemId}/bom-items`
         ]
-      : [
-          `/api/v1/rest/workspaces/${wsId}/items/${itemId}/workflow-items`,
-          `/api/rest/v1/workspaces/${wsId}/items/${itemId}/workflow-items`,
-          `/api/v3/workspaces/${wsId}/items/${itemId}/workflow-items`
-        ];
+      : await resolveAffectedUrls(wsId, itemId);
 
     let okCount = 0;
     let failCount = 0;
@@ -217,6 +262,8 @@
       // Keep the workflow payloads aligned with Autodesk docs examples first,
       // then fall back to legacy variants used by different tenants.
       return [
+        { item: { link: `/api/v3/workspaces/${wsId}/items/${id}` } },
+        { item: { link: `/api/v3/workspaces/${wsId}/items/${id}`, deleted: false } },
         { workflowItems: [{ itemId: id }] },
         { workflowItems: [{ dmsId: id }] },
         { workflowItems: [id] },
