@@ -202,10 +202,24 @@
     let okCount = 0;
     let failCount = 0;
 
-    for (let i = 0; i < ids.length; i++) {
-      const id = Number(ids[i]);
-      statusCb(`Adding ${i + 1}/${ids.length}: ${id}`);
-      const bodies = [
+    const buildBodies = (id) => {
+      if (kind === "bom") {
+        return [
+          { itemId: id },
+          { dmsId: id },
+          { items: [id] },
+          { itemIds: [id] },
+          { items: [{ itemId: id }] },
+          { items: [{ dmsId: id }] }
+        ];
+      }
+
+      // Keep the workflow payloads aligned with Autodesk docs examples first,
+      // then fall back to legacy variants used by different tenants.
+      return [
+        { workflowItems: [{ itemId: id }] },
+        { workflowItems: [{ dmsId: id }] },
+        { workflowItems: [id] },
         { itemId: id },
         { dmsId: id },
         { items: [id] },
@@ -213,6 +227,12 @@
         { items: [{ itemId: id }] },
         { items: [{ dmsId: id }] }
       ];
+    };
+
+    for (let i = 0; i < ids.length; i++) {
+      const id = Number(ids[i]);
+      statusCb(`Adding ${i + 1}/${ids.length}: ${id}`);
+      const bodies = buildBodies(id);
       try {
         await tryPost(urls, bodies);
         okCount++;
