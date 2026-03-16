@@ -189,12 +189,14 @@
   async function addIdsToEndpoint(kind, wsId, itemId, ids, statusCb) {
     const urls = kind === "bom"
       ? [
-          `/api/v3/workspaces/${wsId}/items/${itemId}/bom-items`,
-          `/api/rest/v1/workspaces/${wsId}/items/${itemId}/boms`
+          `/api/v1/rest/workspaces/${wsId}/items/${itemId}/boms`,
+          `/api/rest/v1/workspaces/${wsId}/items/${itemId}/boms`,
+          `/api/v3/workspaces/${wsId}/items/${itemId}/bom-items`
         ]
       : [
-          `/api/v3/workspaces/${wsId}/items/${itemId}/workflow-items`,
-          `/api/rest/v1/workspaces/${wsId}/items/${itemId}/workflow-items`
+          `/api/v1/rest/workspaces/${wsId}/items/${itemId}/workflow-items`,
+          `/api/rest/v1/workspaces/${wsId}/items/${itemId}/workflow-items`,
+          `/api/v3/workspaces/${wsId}/items/${itemId}/workflow-items`
         ];
 
     let okCount = 0;
